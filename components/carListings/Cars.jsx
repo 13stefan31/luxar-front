@@ -496,7 +496,7 @@ export default function Cars() {
           </ul> 
         </div>
         <div className="row">
-          <div className="wrap-sidebar-dk side-bar col-xl-3 col-md-12 col-sm-12">
+          <div className="wrap-sidebar-dk side-bar col-xl-3 col-md-12 col-sm-12 order-xl-2">
             <div className="sidebar-handle filter-popup">
               <svg
                 width={24}
@@ -619,7 +619,7 @@ export default function Cars() {
               {/*widget end*/}
             </div>
           </div>
-          <div className="col-xl-9 col-md-12 col-sm-12">
+          <div className="col-xl-9 col-md-12 col-sm-12 order-xl-1">
             <div className="text-box">
               <div className="text">
                 {isInitialLoading ? t("Loading...") : showingText}
