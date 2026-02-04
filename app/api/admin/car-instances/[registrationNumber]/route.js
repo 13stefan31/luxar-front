@@ -1,39 +1,33 @@
 import { NextResponse } from "next/server";
+import { buildRemoteUrl, getAdminEnv } from "@/lib/adminEnv";
 
-const ADMIN_API_ROOT = process.env.NEXT_PUBLIC_ADMIN_API_ROOT;
-const ADMIN_CARS_PATH =
-  process.env.NEXT_PUBLIC_ADMIN_CARS_PATH || "/api/admin/cars";
-
-const buildInstancesBasePath = () => {
-  if (!ADMIN_CARS_PATH) {
-    return null;
+const buildInstancesBasePath = (carsPath) => {
+  const basePath = carsPath || "/api/admin/cars";
+  if (basePath.includes("/cars")) {
+    return basePath.replace("/cars", "/car-instances");
   }
-  if (ADMIN_CARS_PATH.includes("/cars")) {
-    return ADMIN_CARS_PATH.replace("/cars", "/car-instances");
-  }
-  return `${ADMIN_CARS_PATH.replace(/\/$/, "")}/car-instances`;
+  return `${basePath.replace(/\/$/, "")}/car-instances`;
 };
 
-const buildRemoteUrl = (registrationNumber, search) => {
-  if (!ADMIN_API_ROOT) {
-    return null;
-  }
-  const basePath = buildInstancesBasePath();
-  if (!basePath) {
-    return null;
-  }
-  try {
-    const encoded = encodeURIComponent(registrationNumber || "");
-    const remoteUrl = new URL(`${ADMIN_API_ROOT}${basePath}/${encoded}`);
-    remoteUrl.search = search ?? "";
-    return remoteUrl.toString();
-  } catch {
-    return null;
-  }
+const buildInstancePath = (carsPath, registrationNumber) => {
+  const basePath = buildInstancesBasePath(carsPath);
+  const encoded = encodeURIComponent(registrationNumber || "");
+  return `${basePath}/${encoded}`;
 };
 
 const proxy = async (request, params, method) => {
-  if (!ADMIN_API_ROOT) {
+  const { apiRoot, carsPath } = getAdminEnv();
+  const instancePath = buildInstancePath(
+    carsPath,
+    params?.registrationNumber
+  );
+  const remoteUrl = buildRemoteUrl(
+    apiRoot,
+    instancePath,
+    request.nextUrl.search
+  );
+
+  if (!apiRoot || !instancePath || !remoteUrl) {
     return NextResponse.json(
       { error: "Admin endpoint nije konfigurisan." },
       { status: 500 }
@@ -46,14 +40,6 @@ const proxy = async (request, params, method) => {
     null;
   const cookieToken = request.cookies.get("admin_token")?.value;
   const token = authHeader || (cookieToken ? `Bearer ${cookieToken}` : null);
-
-  const remoteUrl = buildRemoteUrl(params?.registrationNumber, request.nextUrl.search);
-  if (!remoteUrl) {
-    return NextResponse.json(
-      { error: "Neuspešna konstrukcija udaljenog URL-a." },
-      { status: 500 }
-    );
-  }
 
   const headers = {};
   let body;

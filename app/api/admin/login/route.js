@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-
-const ADMIN_API_ROOT = process.env.NEXT_PUBLIC_ADMIN_API_ROOT;
-const ADMIN_LOGIN_PATH = process.env.NEXT_PUBLIC_ADMIN_LOGIN_PATH;
-const ADMIN_API_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY;
-
-const remoteUrl = `${ADMIN_API_ROOT || ""}${ADMIN_LOGIN_PATH || ""}`;
+import { buildRemoteUrl, getAdminEnv } from "@/lib/adminEnv";
 
 export async function POST(request) {
-  if (!ADMIN_API_ROOT || !ADMIN_LOGIN_PATH || !ADMIN_API_KEY) {
+  const { apiRoot, loginPath, apiKey } = getAdminEnv();
+  const remoteUrl = buildRemoteUrl(apiRoot, loginPath);
+
+  if (!apiRoot || !loginPath || !apiKey || !remoteUrl) {
     return NextResponse.json(
       { error: "Admin konfiguracija nije postavljena." },
       { status: 500 }
@@ -26,7 +24,7 @@ export async function POST(request) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": ADMIN_API_KEY,
+      "x-api-key": apiKey,
     },
     body: JSON.stringify(body),
   });

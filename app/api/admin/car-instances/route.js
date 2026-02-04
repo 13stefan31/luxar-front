@@ -1,38 +1,24 @@
 import { NextResponse } from "next/server";
+import { buildRemoteUrl, getAdminEnv } from "@/lib/adminEnv";
 
-const ADMIN_API_ROOT = process.env.NEXT_PUBLIC_ADMIN_API_ROOT;
-const ADMIN_CARS_PATH =
-  process.env.NEXT_PUBLIC_ADMIN_CARS_PATH || "/api/admin/cars";
-
-const buildInstancesBasePath = () => {
-  if (!ADMIN_CARS_PATH) {
-    return null;
+const buildInstancesBasePath = (carsPath) => {
+  const basePath = carsPath || "/api/admin/cars";
+  if (basePath.includes("/cars")) {
+    return basePath.replace("/cars", "/car-instances");
   }
-  if (ADMIN_CARS_PATH.includes("/cars")) {
-    return ADMIN_CARS_PATH.replace("/cars", "/car-instances");
-  }
-  return `${ADMIN_CARS_PATH.replace(/\/$/, "")}/car-instances`;
-};
-
-const buildRemoteUrl = (search) => {
-  if (!ADMIN_API_ROOT) {
-    return null;
-  }
-  const basePath = buildInstancesBasePath();
-  if (!basePath) {
-    return null;
-  }
-  try {
-    const remoteUrl = new URL(`${ADMIN_API_ROOT}${basePath}`);
-    remoteUrl.search = search ?? "";
-    return remoteUrl.toString();
-  } catch {
-    return null;
-  }
+  return `${basePath.replace(/\/$/, "")}/car-instances`;
 };
 
 export async function POST(request) {
-  if (!ADMIN_API_ROOT) {
+  const { apiRoot, carsPath } = getAdminEnv();
+  const instancesPath = buildInstancesBasePath(carsPath);
+  const remoteUrl = buildRemoteUrl(
+    apiRoot,
+    instancesPath,
+    request.nextUrl.search
+  );
+
+  if (!apiRoot || !instancesPath || !remoteUrl) {
     return NextResponse.json(
       { error: "Admin endpoint nije konfigurisan." },
       { status: 500 }
@@ -45,14 +31,6 @@ export async function POST(request) {
     null;
   const cookieToken = request.cookies.get("admin_token")?.value;
   const token = authHeader || (cookieToken ? `Bearer ${cookieToken}` : null);
-
-  const remoteUrl = buildRemoteUrl(request.nextUrl.search);
-  if (!remoteUrl) {
-    return NextResponse.json(
-      { error: "Neuspešna konstrukcija udaljenog URL-a." },
-      { status: 500 }
-    );
-  }
 
   const body = await request.text();
   const headers = { "Content-Type": "application/json" };
@@ -74,7 +52,15 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  if (!ADMIN_API_ROOT) {
+  const { apiRoot, carsPath } = getAdminEnv();
+  const instancesPath = buildInstancesBasePath(carsPath);
+  const remoteUrl = buildRemoteUrl(
+    apiRoot,
+    instancesPath,
+    request.nextUrl.search
+  );
+
+  if (!apiRoot || !instancesPath || !remoteUrl) {
     return NextResponse.json(
       { error: "Admin endpoint nije konfigurisan." },
       { status: 500 }
@@ -87,14 +73,6 @@ export async function GET(request) {
     null;
   const cookieToken = request.cookies.get("admin_token")?.value;
   const token = authHeader || (cookieToken ? `Bearer ${cookieToken}` : null);
-
-  const remoteUrl = buildRemoteUrl(request.nextUrl.search);
-  if (!remoteUrl) {
-    return NextResponse.json(
-      { error: "Neuspešna konstrukcija udaljenog URL-a." },
-      { status: 500 }
-    );
-  }
 
   const headers = {};
   if (token) {

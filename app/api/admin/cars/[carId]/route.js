@@ -1,26 +1,18 @@
 import { NextResponse } from "next/server";
+import { buildRemoteUrl, getAdminEnv } from "@/lib/adminEnv";
 
-const ADMIN_API_ROOT = process.env.NEXT_PUBLIC_ADMIN_API_ROOT;
-const ADMIN_CARS_PATH =
-  process.env.NEXT_PUBLIC_ADMIN_CARS_PATH || "/api/admin/cars";
-
-const buildRemoteUrl = (carId, search) => {
-  if (!ADMIN_API_ROOT || !ADMIN_CARS_PATH) {
-    return null;
-  }
-  try {
-    const encoded = encodeURIComponent(carId || "");
-    const basePath = ADMIN_CARS_PATH.replace(/\/+$/, "");
-    const remoteUrl = new URL(`${ADMIN_API_ROOT}${basePath}/${encoded}`);
-    remoteUrl.search = search ?? "";
-    return remoteUrl.toString();
-  } catch {
-    return null;
-  }
+const buildCarPath = (carsPath, carId) => {
+  const basePath = (carsPath || "/api/admin/cars").replace(/\/+$/, "");
+  const encoded = encodeURIComponent(carId || "");
+  return `${basePath}/${encoded}`;
 };
 
 const proxy = async (request, params, method) => {
-  if (!ADMIN_API_ROOT || !ADMIN_CARS_PATH) {
+  const { apiRoot, carsPath } = getAdminEnv();
+  const carPath = buildCarPath(carsPath, params?.carId);
+  const remoteUrl = buildRemoteUrl(apiRoot, carPath, request.nextUrl.search);
+
+  if (!apiRoot || !carPath || !remoteUrl) {
     return NextResponse.json(
       { error: "Admin cars endpoint nije konfigurisan." },
       { status: 500 }
@@ -33,14 +25,6 @@ const proxy = async (request, params, method) => {
     null;
   const cookieToken = request.cookies.get("admin_token")?.value;
   const token = authHeader || (cookieToken ? `Bearer ${cookieToken}` : null);
-
-  const remoteUrl = buildRemoteUrl(params?.carId, request.nextUrl.search);
-  if (!remoteUrl) {
-    return NextResponse.json(
-      { error: "Neuspešna konstrukcija udaljenog URL-a." },
-      { status: 500 }
-    );
-  }
 
   const headers = {};
   let body;
