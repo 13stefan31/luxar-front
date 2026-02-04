@@ -168,6 +168,7 @@ export default function Header1({
                       value={language.code}
                       title={language.label}
                     >
+                      {language.flag ? `${language.flag} ` : ""}
                       {language.code.toUpperCase()}
                     </option>
                   ))}

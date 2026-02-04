@@ -6,6 +6,7 @@ export default function SelectComponent({
   options = ["New York", "Los Vegas", "California"],
   value,
   onChange,
+  hideEmptyOption = false,
 }) {
   const [isDromdownOpen, setIsDromdownOpen] = useState(false);
   const normalizedOptions = useMemo(
@@ -63,6 +64,12 @@ export default function SelectComponent({
   const selectedOption =
     normalizedOptions.find((option) => option.value === selectedValue) ||
     normalizedOptions[0];
+  const dropdownOptions = useMemo(() => {
+    if (!hideEmptyOption) {
+      return normalizedOptions;
+    }
+    return normalizedOptions.filter((option) => option.value !== "");
+  }, [hideEmptyOption, normalizedOptions]);
 
   return (
     <div ref={ref} className={`drop-menu  ${isDromdownOpen ? "active" : ""} `}>
@@ -89,7 +96,7 @@ export default function SelectComponent({
               }
         }
       >
-        {normalizedOptions.map((option, index) => (
+        {dropdownOptions.map((option, index) => (
           <li
             onClick={() => {
               if (onChange) {

@@ -85,6 +85,7 @@ export default function Hero() {
                       options={engineTypeOptions}
                       value={engineType}
                       onChange={setEngineType}
+                      hideEmptyOption
                     />
                   </div>
 
@@ -93,6 +94,7 @@ export default function Hero() {
                       options={transmissionOptions}
                       value={transmissionType}
                       onChange={setTransmissionType}
+                      hideEmptyOption
                     />
                   </div>
 
@@ -101,6 +103,7 @@ export default function Hero() {
                       options={fuelOptions}
                       value={fuelType}
                       onChange={setFuelType}
+                      hideEmptyOption
                     />
                   </div>
 

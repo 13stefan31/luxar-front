@@ -655,11 +655,15 @@ export default function Cars2() {
                         index + 1
                       }`;
                       return (
-                        <div
+                        <Link
                           key={
                             variant.uuid ||
                             `${expandedCar.id}-${variant.index}`
                           }
+                          href={{
+                            pathname: `/car/${expandedCar.id}`,
+                            query: { instance: variant.uuid },
+                          }}
                           className={`variant-card${
                             isBase ? " is-base" : " is-upgrade"
                           }`}
@@ -692,19 +696,13 @@ export default function Cars2() {
                                 </li>
                               ))}
                             </ul>
-                            <div className="variant-footer">
-                              <Link
-                                href={{
-                                  pathname: `/car/${expandedCar.id}`,
-                                  query: { instance: variant.uuid },
-                                }}
-                                className="variant-cta"
-                              >
-                                {t("Details")}
-                              </Link>
-                            </div>
+                          <div className="variant-footer">
+                            <span className="variant-cta">
+                              {t("Details")}
+                            </span>
                           </div>
                         </div>
+                        </Link>
                       );
                     })}
                   </div>

@@ -3,9 +3,9 @@ import me from "./me.json";
 import ru from "./ru.json";
 
 export const supportedLanguages = [
-  { code: "me", label: "Crnogorski" },
-  { code: "ru", label: "Русский" },
-  { code: "en", label: "English" }
+  { code: "me", label: "Crnogorski", flag: "🇲🇪" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+  { code: "en", label: "English", flag: "🇬🇧" }
 ];
 
 const translations = {
