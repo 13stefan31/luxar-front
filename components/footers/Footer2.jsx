@@ -10,6 +10,7 @@ import {
 } from "@/data/footerLinks";
 import Link from "@/components/common/LocalizedLink";
 export default function Footer2() {
+  const year = new Date().getFullYear();
   return (
     <footer className="boxcar-footer footer-style-four">
       <div className="footer-top">
@@ -214,7 +215,7 @@ export default function Footer2() {
         <div className="boxcar-container">
           <div className="inner-container">
             <div className="copyright-text wow fadeInUp">
-              © <a href="#">2024 Boxcars.com. All rights reserved.</a>
+              © <a href="#">{year} Boxcars.com. All rights reserved.</a>
             </div>
             <ul className="footer-nav wow fadeInUp" data-wow-delay="200ms">
               <li>

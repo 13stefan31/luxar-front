@@ -9,8 +9,13 @@ import {
   adminUpdateCarInstance,
   adminDeleteCarInstance,
   adminCreateCarInstance,
+  adminCreateCarPrices,
+  adminGetCarPrices,
+  adminUpdateCarPrice,
+  adminDeleteCarPrice,
   adminLogout,
 } from "@/lib/adminApi";
+import { INVENTORY_API_ORIGIN, normalizeInventoryImageUrl } from "@/lib/inventoryApi";
 
 const ENGINE_TYPE_OPTIONS = [
   { value: "", label: "Odaberi" },
@@ -90,55 +95,225 @@ const getStatusTone = (status = "") => {
   return "status-pill__default";
 };
 
-const VariationImageUpload = ({ label = "Slika varijacije" }) => {
-  const [preview, setPreview] = useState("");
-  const [fileName, setFileName] = useState("");
-  const objectUrlRef = useRef("");
+const resolveImagePath = (image) => {
+  if (!image) {
+    return "";
+  }
+  if (typeof image === "string") {
+    return image;
+  }
+  if (typeof image === "object") {
+    return (
+      image.path ||
+      image.url ||
+      image.image ||
+      image.src ||
+      ""
+    );
+  }
+  return "";
+};
 
-  useEffect(
-    () => () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = "";
-      }
-    },
-    []
-  );
+const resolveRemoteImagePath = (image) => {
+  const raw = resolveImagePath(image);
+  if (!raw) {
+    return "";
+  }
+  const normalized = normalizeInventoryImageUrl(raw, "");
+  if (
+    normalized &&
+    /^\/?uploads\//i.test(normalized) &&
+    INVENTORY_API_ORIGIN
+  ) {
+    const trimmed = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${INVENTORY_API_ORIGIN}${trimmed}`;
+  }
+  return normalized || raw;
+};
 
-  const handleImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = "";
-      }
-      setPreview("");
-      setFileName("");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-    objectUrlRef.current = url;
-    setPreview(url);
-    setFileName(file.name);
-  };
+const normalizeImageList = (images) => {
+  if (!Array.isArray(images)) {
+    return [];
+  }
+  return images.map((image) => resolveRemoteImagePath(image)).filter(Boolean);
+};
 
+const resolveCoverImage = (generatedImages = []) => {
+  if (!Array.isArray(generatedImages)) {
+    return null;
+  }
   return (
-    <div className="image-upload">
-      <label className="image-upload-label">
-        <span>{label}</span>
-        <div className="image-upload-control">
-          <div className={`image-preview ${preview ? "has-image" : ""}`}>
-            {preview ? <img src={preview} alt={label} /> : <span>Dodaj sliku</span>}
-          </div>
-          <input type="file" accept="image/*" onChange={handleImageChange} />
-        </div>
-        {fileName && <p className="image-filename">{fileName}</p>}
-      </label>
-    </div>
+    generatedImages.find((img) =>
+      ["c", "cover", "main"].includes(String(img?.type || "").toLowerCase())
+    ) || null
   );
+};
+
+const MONTH_LABELS = [
+  "Januar",
+  "Februar",
+  "Mart",
+  "April",
+  "Maj",
+  "Jun",
+  "Jul",
+  "Avgust",
+  "Septembar",
+  "Oktobar",
+  "Novembar",
+  "Decembar",
+];
+
+const WEEKDAY_LABELS = ["Pon", "Uto", "Sri", "Cet", "Pet", "Sub", "Ned"];
+
+const pad2 = (value) => String(value).padStart(2, "0");
+
+const formatLocalDate = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(
+    date.getDate()
+  )}`;
+};
+
+const formatDisplayDate = (value) => {
+  const parsed = parseLocalDate(value);
+  if (!parsed) {
+    return "";
+  }
+  return `${pad2(parsed.getDate())}.${pad2(parsed.getMonth() + 1)}.${parsed.getFullYear()}`;
+};
+
+const parseLocalDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+};
+
+const normalizeRemoteDate = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value.slice(0, 10);
+  }
+  if (typeof value === "object") {
+    if (typeof value.date === "string") {
+      return value.date.slice(0, 10);
+    }
+    if (typeof value.value === "string") {
+      return value.value.slice(0, 10);
+    }
+  }
+  return "";
+};
+
+const toDayNumber = (value) => {
+  const parsed = parseLocalDate(value);
+  if (!parsed) {
+    return NaN;
+  }
+  return Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+};
+
+const startOfMonth = (date) =>
+  new Date(date.getFullYear(), date.getMonth(), 1);
+
+const addMonths = (date, delta) =>
+  new Date(date.getFullYear(), date.getMonth() + delta, 1);
+
+const buildCalendarDays = (monthDate) => {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  const days = [];
+
+  for (let i = 0; i < totalCells; i += 1) {
+    const dayNumber = i - startOffset + 1;
+    let cellDate = null;
+    let isCurrentMonth = true;
+
+    if (dayNumber < 1) {
+      cellDate = new Date(year, month - 1, daysInPrevMonth + dayNumber);
+      isCurrentMonth = false;
+    } else if (dayNumber > daysInMonth) {
+      cellDate = new Date(year, month + 1, dayNumber - daysInMonth);
+      isCurrentMonth = false;
+    } else {
+      cellDate = new Date(year, month, dayNumber);
+    }
+
+    const iso = formatLocalDate(cellDate);
+    days.push({
+      key: `${iso}-${i}`,
+      label: cellDate ? cellDate.getDate() : "",
+      iso,
+      isCurrentMonth,
+    });
+  }
+
+  return { year, month, days };
+};
+
+const calculateRangeDays = (startDate, endDate) => {
+  const start = toDayNumber(startDate);
+  const end = toDayNumber(endDate);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return 0;
+  }
+  return Math.floor((end - start) / 86400000) + 1;
+};
+
+const formatTierLabel = (tier) => {
+  const minDays = tier?.minDays;
+  const maxDays = tier?.maxDays;
+  if (!minDays) {
+    return "Nedefinisano";
+  }
+  if (!maxDays && maxDays !== 0) {
+    return `${minDays}+ dana`;
+  }
+  if (Number(minDays) === Number(maxDays)) {
+    return `${minDays} dana`;
+  }
+  return `${minDays} - ${maxDays} dana`;
+};
+
+const buildInstanceImageSet = (instance) => {
+  const generatedImages = Array.isArray(instance?.generatedImages)
+    ? instance.generatedImages
+    : [];
+  const coverGenerated = resolveCoverImage(generatedImages);
+  const galleryGenerated = generatedImages.filter(
+    (img) => img !== coverGenerated
+  );
+  const normalizedImages = normalizeImageList(instance?.images);
+  const normalizedGenerated = normalizeImageList(galleryGenerated);
+  const cover =
+    resolveRemoteImagePath(coverGenerated) ||
+    resolveRemoteImagePath(instance?.coverImage) ||
+    resolveRemoteImagePath(instance?.image) ||
+    normalizedImages[0] ||
+    normalizedGenerated[0] ||
+    "";
+  const combinedGallery = [...normalizedImages, ...normalizedGenerated];
+  const dedupedGallery = Array.from(new Set(combinedGallery));
+  const gallery = dedupedGallery.filter((image) => image && image !== cover);
+  return { cover, gallery };
 };
 
 export default function CarDetailsTabs({ carId }) {
@@ -159,11 +334,25 @@ export default function CarDetailsTabs({ carId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingFocusVariationKey, setPendingFocusVariationKey] = useState("");
+  const [coverImageFile, setCoverImageFile] = useState(null);
+  const [coverFallback, setCoverFallback] = useState("");
   const [imagePreview, setImagePreview] = useState("");
   const [imageName, setImageName] = useState("");
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const [existingGalleryImages, setExistingGalleryImages] = useState([]);
+  const [instanceCoverFiles, setInstanceCoverFiles] = useState({});
+  const [instanceCoverPreviews, setInstanceCoverPreviews] = useState({});
+  const [instanceGalleryFiles, setInstanceGalleryFiles] = useState({});
+  const [instanceGalleryPreviews, setInstanceGalleryPreviews] = useState({});
+  const [instanceExistingCovers, setInstanceExistingCovers] = useState({});
+  const [instanceExistingGalleries, setInstanceExistingGalleries] = useState({});
   const variationRefs = useRef({});
   const registrationInputRefs = useRef({});
   const imageObjectUrlRef = useRef("");
+  const galleryObjectUrlRef = useRef([]);
+  const instanceCoverUrlsRef = useRef({});
+  const instanceGalleryUrlsRef = useRef({});
   const [formValues, setFormValues] = useState({
     vehicleName: "",
     yearOfManufacture: "",
@@ -181,6 +370,27 @@ export default function CarDetailsTabs({ carId }) {
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [savingGeneral, setSavingGeneral] = useState(false);
+  const [priceRange, setPriceRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
+  const [priceTiers, setPriceTiers] = useState([
+    { minDays: 1, maxDays: "", price: "" },
+  ]);
+  const [priceErrors, setPriceErrors] = useState({});
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [pricePeriods, setPricePeriods] = useState([]);
+  const [priceMeta, setPriceMeta] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [priceLoadError, setPriceLoadError] = useState("");
+  const [priceEditingId, setPriceEditingId] = useState(null);
+  const [priceEditDrafts, setPriceEditDrafts] = useState({});
+  const [priceEditErrors, setPriceEditErrors] = useState({});
+  const [priceEditSaving, setPriceEditSaving] = useState({});
+  const [priceDeleteLoading, setPriceDeleteLoading] = useState({});
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    startOfMonth(new Date())
+  );
 
   useEffect(() => {
     if (!carId) {
@@ -210,11 +420,31 @@ export default function CarDetailsTabs({ carId }) {
         const resolvedCar =
           carPayload?.data?.[0] || carPayload?.car || carPayload || null;
         setCar(resolvedCar);
+        const generatedImages = Array.isArray(resolvedCar?.generatedImages)
+          ? resolvedCar.generatedImages
+          : [];
+        const coverGenerated = resolveCoverImage(generatedImages);
+        const galleryGenerated = generatedImages.filter(
+          (img) => img !== coverGenerated
+        );
+        const normalizedImages = normalizeImageList(resolvedCar?.images);
+        const normalizedGenerated = normalizeImageList(galleryGenerated);
         const defaultImage =
-          resolvedCar?.image || resolvedCar?.images?.[0] || "";
+          resolveRemoteImagePath(coverGenerated) ||
+          resolveRemoteImagePath(resolvedCar?.coverImage) ||
+          resolveRemoteImagePath(resolvedCar?.image) ||
+          normalizedImages[0] ||
+          normalizedGenerated[0] ||
+          "";
         if (defaultImage) {
           setImagePreview((prev) => prev || defaultImage);
         }
+        setCoverFallback(defaultImage || "");
+        const combinedGallery = [...normalizedImages, ...normalizedGenerated];
+        const dedupedGallery = Array.from(new Set(combinedGallery));
+        setExistingGalleryImages(
+          dedupedGallery.filter((image) => image !== defaultImage)
+        );
         setFormValues((prev) => ({
           ...prev,
           vehicleName: resolvedCar?.vehicleName || resolvedCar?.alias || "",
@@ -238,6 +468,22 @@ export default function CarDetailsTabs({ carId }) {
           equipment: resolvedCar?.equipment || {},
         }));
         setInstances(keyedInstances);
+        const instanceCoverMap = {};
+        const instanceGalleryMap = {};
+        const instancePreviewMap = {};
+        keyedInstances.forEach((instance) => {
+          const { cover, gallery } = buildInstanceImageSet(instance);
+          if (cover) {
+            instanceCoverMap[instance.variationKey] = cover;
+            instancePreviewMap[instance.variationKey] = cover;
+          }
+          if (gallery.length) {
+            instanceGalleryMap[instance.variationKey] = gallery;
+          }
+        });
+        setInstanceExistingCovers(instanceCoverMap);
+        setInstanceExistingGalleries(instanceGalleryMap);
+        setInstanceCoverPreviews((prev) => ({ ...instancePreviewMap, ...prev }));
         setInstanceEdits(
           keyedInstances.reduce((acc, instance) => {
             acc[instance.variationKey] = {
@@ -271,6 +517,20 @@ export default function CarDetailsTabs({ carId }) {
         URL.revokeObjectURL(imageObjectUrlRef.current);
         imageObjectUrlRef.current = "";
       }
+      if (galleryObjectUrlRef.current.length) {
+        galleryObjectUrlRef.current.forEach((url) => URL.revokeObjectURL(url));
+        galleryObjectUrlRef.current = [];
+      }
+      Object.values(instanceCoverUrlsRef.current || {}).forEach((url) =>
+        URL.revokeObjectURL(url)
+      );
+      Object.values(instanceGalleryUrlsRef.current || {}).forEach((urls) => {
+        if (Array.isArray(urls)) {
+          urls.forEach((url) => URL.revokeObjectURL(url));
+        }
+      });
+      instanceCoverUrlsRef.current = {};
+      instanceGalleryUrlsRef.current = {};
     };
   }, []);
 
@@ -281,13 +541,36 @@ export default function CarDetailsTabs({ carId }) {
       imageObjectUrlRef.current = "";
     }
     if (!file) {
+      setCoverImageFile(null);
       setImageName("");
+      setImagePreview(coverFallback || "");
       return;
     }
     const url = URL.createObjectURL(file);
     imageObjectUrlRef.current = url;
     setImagePreview(url);
     setImageName(file.name);
+    setCoverImageFile(file);
+  };
+
+  const handleGalleryChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (galleryObjectUrlRef.current.length) {
+      galleryObjectUrlRef.current.forEach((url) => URL.revokeObjectURL(url));
+      galleryObjectUrlRef.current = [];
+    }
+    if (!files.length) {
+      setGalleryFiles([]);
+      setGalleryPreviews([]);
+      return;
+    }
+    const previews = files.map((file) => {
+      const url = URL.createObjectURL(file);
+      galleryObjectUrlRef.current.push(url);
+      return { name: file.name, url };
+    });
+    setGalleryFiles(files);
+    setGalleryPreviews(previews);
   };
 
   useEffect(() => {
@@ -370,7 +653,7 @@ export default function CarDetailsTabs({ carId }) {
     setFieldErrors({});
     setSavingGeneral(true);
     try {
-      const response = await adminUpdateCar(carId, {
+      const payload = {
         vehicleName: formValues.vehicleName,
         yearOfManufacture: formValues.yearOfManufacture,
         transmissionType: formValues.transmissionType,
@@ -384,7 +667,14 @@ export default function CarDetailsTabs({ carId }) {
         doesHaveAirConditioning: formValues.doesHaveAirConditioning,
         // description: formValues.description,
         equipment: formValues.equipment,
-      });
+      };
+      if (coverImageFile) {
+        payload.coverImage = coverImageFile;
+      }
+      if (galleryFiles.length) {
+        payload.images = galleryFiles;
+      }
+      const response = await adminUpdateCar(carId, payload);
       const successMessage =
         response?.message ||
         response?.successMessage ||
@@ -400,6 +690,623 @@ export default function CarDetailsTabs({ carId }) {
       setSavingGeneral(false);
     }
   };
+
+  const handlePriceRangeInput = (field) => (event) => {
+    const value = event.target.value;
+    setPriceRange((prev) => {
+      const next = { ...prev, [field]: value };
+      if (
+        field === "startDate" &&
+        value &&
+        prev.endDate &&
+        toDayNumber(value) > toDayNumber(prev.endDate)
+      ) {
+        next.endDate = "";
+      }
+      return next;
+    });
+    if (field === "startDate" && value) {
+      const parsed = parseLocalDate(value);
+      if (parsed) {
+        setCalendarMonth(startOfMonth(parsed));
+      }
+    }
+    setPriceErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  const handleCalendarSelect = (iso) => {
+    if (!iso) {
+      return;
+    }
+    setPriceErrors((prev) => ({ ...prev, startDate: "", endDate: "" }));
+    setPriceRange((prev) => {
+      if (!prev.startDate || prev.endDate) {
+        return { startDate: iso, endDate: "" };
+      }
+      const startNum = toDayNumber(prev.startDate);
+      const selectedNum = toDayNumber(iso);
+      if (!Number.isFinite(startNum) || !Number.isFinite(selectedNum)) {
+        return { startDate: iso, endDate: "" };
+      }
+      if (selectedNum < startNum) {
+        return { startDate: iso, endDate: prev.startDate };
+      }
+      return { ...prev, endDate: iso };
+    });
+    const parsed = parseLocalDate(iso);
+    if (parsed) {
+      setCalendarMonth(startOfMonth(parsed));
+    }
+  };
+
+  const handleResetPriceRange = () => {
+    setPriceRange({ startDate: "", endDate: "" });
+    setPriceErrors((prev) => ({ ...prev, startDate: "", endDate: "" }));
+  };
+
+  const handlePriceTierChange = (index, field, value) => {
+    setPriceTiers((prev) =>
+      prev.map((tier, idx) =>
+        idx === index ? { ...tier, [field]: value } : tier
+      )
+    );
+    setPriceErrors({});
+  };
+
+  const handleAddPriceTier = () => {
+    setPriceTiers((prev) => {
+      const last = prev[prev.length - 1] || {};
+      const lastMax = Number(last.maxDays);
+      const lastMin = Number(last.minDays);
+      const nextMin = Number.isFinite(lastMax)
+        ? lastMax + 1
+        : Number.isFinite(lastMin)
+        ? lastMin + 1
+        : 1;
+      return [...prev, { minDays: nextMin, maxDays: "", price: "" }];
+    });
+    setPriceErrors({});
+  };
+
+  const handleRemovePriceTier = (index) => {
+    setPriceTiers((prev) => prev.filter((_, idx) => idx !== index));
+    setPriceErrors({});
+  };
+
+  const handlePriceSave = async () => {
+    if (!carId) {
+      toast.error("ID vozila nedostaje.");
+      return;
+    }
+
+    const errors = {};
+    const { startDate, endDate } = priceRange;
+    const startNum = toDayNumber(startDate);
+    const endNum = toDayNumber(endDate);
+
+    if (!startDate) {
+      errors.startDate = "Odaberite početni datum.";
+    }
+    if (!endDate) {
+      errors.endDate = "Odaberite krajnji datum.";
+    }
+    if (
+      startDate &&
+      endDate &&
+      Number.isFinite(startNum) &&
+      Number.isFinite(endNum) &&
+      endNum < startNum
+    ) {
+      errors.endDate = "Krajnji datum mora biti nakon početnog.";
+    }
+
+    if (!priceTiers.length) {
+      errors.tiers = "Dodajte makar jedan cjenovni nivo.";
+    } else {
+      const tierErrors = priceTiers.map((tier) => {
+        const entry = {};
+        const minDays = Number(tier.minDays);
+        const maxDays =
+          tier.maxDays === "" || tier.maxDays === null
+            ? null
+            : Number(tier.maxDays);
+        const price = Number(tier.price);
+
+        if (!Number.isFinite(minDays) || minDays < 1) {
+          entry.minDays = "Unesite validan minimum.";
+        }
+        if (maxDays !== null) {
+          if (!Number.isFinite(maxDays)) {
+            entry.maxDays = "Unesite validan maksimum.";
+          } else if (Number.isFinite(minDays) && maxDays < minDays) {
+            entry.maxDays = "Maksimum mora biti veći ili jednak minimumu.";
+          }
+        }
+        if (!Number.isFinite(price) || price <= 0) {
+          entry.price = "Unesite cijenu.";
+        }
+
+        return entry;
+      });
+
+      const normalizedForCheck = priceTiers.map((tier, index) => ({
+        index,
+        minDays: Number(tier.minDays),
+        maxDays:
+          tier.maxDays === "" || tier.maxDays === null
+            ? null
+            : Number(tier.maxDays),
+      }));
+
+      normalizedForCheck.forEach((current, idx) => {
+        const entry = tierErrors[current.index] || {};
+        if (current.maxDays === null && idx < normalizedForCheck.length - 1) {
+          if (!entry.maxDays) {
+            entry.maxDays = "Samo posljednji nivo može biti bez maksimuma.";
+          }
+        }
+        if (idx === 0) {
+          tierErrors[current.index] = entry;
+          return;
+        }
+        const previous = normalizedForCheck[idx - 1];
+        if (
+          Number.isFinite(previous.minDays) &&
+          Number.isFinite(current.minDays) &&
+          current.minDays <= previous.minDays &&
+          !entry.minDays
+        ) {
+          entry.minDays = "Min dana mora biti veći od prethodnog.";
+        }
+        if (
+          Number.isFinite(previous.maxDays) &&
+          Number.isFinite(current.minDays) &&
+          current.minDays <= previous.maxDays &&
+          !entry.minDays
+        ) {
+          entry.minDays = "Opseg se preklapa sa prethodnim.";
+        }
+        if (
+          previous.maxDays === null &&
+          idx > 0 &&
+          !tierErrors[previous.index]?.maxDays
+        ) {
+          tierErrors[previous.index] = {
+            ...tierErrors[previous.index],
+            maxDays: "Samo posljednji nivo može biti bez maksimuma.",
+          };
+        }
+        tierErrors[current.index] = entry;
+      });
+
+      if (tierErrors.some((entry) => Object.keys(entry).length)) {
+        errors.tiers = tierErrors;
+      }
+    }
+
+    if (Object.keys(errors).length) {
+      setPriceErrors(errors);
+      toast.error("Provjeri unos.");
+      return;
+    }
+
+    setPriceSaving(true);
+    try {
+      const normalizedTiers = priceTiers
+        .map((tier) => {
+          const result = {
+            minDays: Number(tier.minDays),
+            price: Number(tier.price),
+          };
+          const rawMax = tier.maxDays;
+          if (rawMax !== "" && rawMax !== null && rawMax !== undefined) {
+            result.maxDays = Number(rawMax);
+          }
+          return result;
+        })
+        .sort((a, b) => a.minDays - b.minDays);
+      const numericCarId = Number(carId);
+      const payload = {
+        carId: Number.isFinite(numericCarId) ? numericCarId : carId,
+        startingDate: startDate,
+        endingDate: endDate,
+        tiers: normalizedTiers,
+      };
+      const response = await adminCreateCarPrices(payload);
+      const message =
+        response?.message ||
+        response?.successMessage ||
+        response?.detail ||
+        "Cijene su sačuvane.";
+      toast.success(message);
+      setPriceErrors({});
+      setPriceRange({ startDate: "", endDate: "" });
+      setPriceTiers([{ minDays: 1, maxDays: "", price: "" }]);
+      await loadPricePeriods();
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri kreiranju cijena.");
+    } finally {
+      setPriceSaving(false);
+    }
+  };
+
+  const buildPriceEditDraft = (period) => {
+    const tiers = Array.isArray(period?.tiers) ? period.tiers : [];
+    return {
+      id: period?.id,
+      startDate: period?.startingDate || "",
+      endDate: period?.endingDate || "",
+      tiers: tiers.length
+        ? tiers.map((tier) => ({
+            id: tier?.id,
+            minDays: tier?.minDays ?? "",
+            maxDays: tier?.maxDays ?? "",
+            price: tier?.price ?? "",
+          }))
+        : [{ minDays: 1, maxDays: "", price: "" }],
+    };
+  };
+
+  const ensurePriceEditDraft = (period) => {
+    if (!period?.id) {
+      return;
+    }
+    setPriceEditDrafts((prev) => {
+      if (prev[period.id]) {
+        return prev;
+      }
+      return { ...prev, [period.id]: buildPriceEditDraft(period) };
+    });
+  };
+
+  const handlePriceEditStart = (period) => {
+    if (!period?.id) {
+      return;
+    }
+    ensurePriceEditDraft(period);
+    setPriceEditingId(period.id);
+  };
+
+  const handlePriceEditCancel = () => {
+    setPriceEditingId(null);
+  };
+
+  const handlePriceEditFieldChange = (periodId, field, value) => {
+    setPriceEditDrafts((prev) => ({
+      ...prev,
+      [periodId]: {
+        ...prev[periodId],
+        [field]: value,
+      },
+    }));
+    setPriceEditErrors((prev) => {
+      const next = { ...prev };
+      if (next[periodId]) {
+        next[periodId] = { ...next[periodId], [field]: "" };
+      }
+      return next;
+    });
+  };
+
+  const handlePriceEditTierChange = (periodId, index, field, value) => {
+    setPriceEditDrafts((prev) => {
+      const current = prev[periodId];
+      if (!current) {
+        return prev;
+      }
+      const tiers = current.tiers.map((tier, idx) =>
+        idx === index ? { ...tier, [field]: value } : tier
+      );
+      return {
+        ...prev,
+        [periodId]: { ...current, tiers },
+      };
+    });
+    setPriceEditErrors((prev) => {
+      const next = { ...prev };
+      if (next[periodId]) {
+        next[periodId] = { ...next[periodId], tiers: [] };
+      }
+      return next;
+    });
+  };
+
+  const handlePriceEditAddTier = (periodId) => {
+    setPriceEditDrafts((prev) => {
+      const current = prev[periodId];
+      if (!current) {
+        return prev;
+      }
+      const last = current.tiers[current.tiers.length - 1] || {};
+      const lastMax = Number(last.maxDays);
+      const lastMin = Number(last.minDays);
+      const nextMin = Number.isFinite(lastMax)
+        ? lastMax + 1
+        : Number.isFinite(lastMin)
+        ? lastMin + 1
+        : 1;
+      return {
+        ...prev,
+        [periodId]: {
+          ...current,
+          tiers: [...current.tiers, { minDays: nextMin, maxDays: "", price: "" }],
+        },
+      };
+    });
+  };
+
+  const handlePriceEditRemoveTier = (periodId, index) => {
+    setPriceEditDrafts((prev) => {
+      const current = prev[periodId];
+      if (!current) {
+        return prev;
+      }
+      const tiers = current.tiers.filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        [periodId]: {
+          ...current,
+          tiers: tiers.length ? tiers : [{ minDays: 1, maxDays: "", price: "" }],
+        },
+      };
+    });
+  };
+
+  const validatePriceDraft = (draft) => {
+    const errors = {};
+    if (!draft?.startDate) {
+      errors.startDate = "Odaberite početni datum.";
+    }
+    if (!draft?.endDate) {
+      errors.endDate = "Odaberite krajnji datum.";
+    }
+    const startNum = toDayNumber(draft?.startDate);
+    const endNum = toDayNumber(draft?.endDate);
+    if (
+      draft?.startDate &&
+      draft?.endDate &&
+      Number.isFinite(startNum) &&
+      Number.isFinite(endNum) &&
+      endNum < startNum
+    ) {
+      errors.endDate = "Krajnji datum mora biti nakon početnog.";
+    }
+    const tiers = Array.isArray(draft?.tiers) ? draft.tiers : [];
+    if (!tiers.length) {
+      errors.tiers = "Dodajte makar jedan cjenovni nivo.";
+    } else {
+      const tierErrors = tiers.map((tier) => {
+        const entry = {};
+        const minDays = Number(tier.minDays);
+        const maxDays =
+          tier.maxDays === "" || tier.maxDays === null
+            ? null
+            : Number(tier.maxDays);
+        const price = Number(tier.price);
+
+        if (!Number.isFinite(minDays) || minDays < 1) {
+          entry.minDays = "Unesite validan minimum.";
+        }
+        if (maxDays !== null) {
+          if (!Number.isFinite(maxDays)) {
+            entry.maxDays = "Unesite validan maksimum.";
+          } else if (Number.isFinite(minDays) && maxDays < minDays) {
+            entry.maxDays = "Maksimum mora biti veći ili jednak minimumu.";
+          }
+        }
+        if (!Number.isFinite(price) || price <= 0) {
+          entry.price = "Unesite cijenu.";
+        }
+        return entry;
+      });
+      const normalizedForCheck = tiers.map((tier, index) => ({
+        index,
+        minDays: Number(tier.minDays),
+        maxDays:
+          tier.maxDays === "" || tier.maxDays === null
+            ? null
+            : Number(tier.maxDays),
+      }));
+      normalizedForCheck.forEach((current, idx) => {
+        const entry = tierErrors[current.index] || {};
+        if (current.maxDays === null && idx < normalizedForCheck.length - 1) {
+          if (!entry.maxDays) {
+            entry.maxDays = "Samo posljednji nivo može biti bez maksimuma.";
+          }
+        }
+        if (idx === 0) {
+          tierErrors[current.index] = entry;
+          return;
+        }
+        const previous = normalizedForCheck[idx - 1];
+        if (
+          Number.isFinite(previous.minDays) &&
+          Number.isFinite(current.minDays) &&
+          current.minDays <= previous.minDays &&
+          !entry.minDays
+        ) {
+          entry.minDays = "Min dana mora biti veći od prethodnog.";
+        }
+        if (
+          Number.isFinite(previous.maxDays) &&
+          Number.isFinite(current.minDays) &&
+          current.minDays <= previous.maxDays &&
+          !entry.minDays
+        ) {
+          entry.minDays = "Opseg se preklapa sa prethodnim.";
+        }
+        if (
+          previous.maxDays === null &&
+          idx > 0 &&
+          !tierErrors[previous.index]?.maxDays
+        ) {
+          tierErrors[previous.index] = {
+            ...tierErrors[previous.index],
+            maxDays: "Samo posljednji nivo može biti bez maksimuma.",
+          };
+        }
+        tierErrors[current.index] = entry;
+      });
+      if (tierErrors.some((entry) => Object.keys(entry).length)) {
+        errors.tiers = tierErrors;
+      }
+    }
+    return errors;
+  };
+
+  const handlePriceEditSave = async (periodId) => {
+    const draft = priceEditDrafts[periodId];
+    if (!draft) {
+      return;
+    }
+    const errors = validatePriceDraft(draft);
+    if (Object.keys(errors).length) {
+      setPriceEditErrors((prev) => ({ ...prev, [periodId]: errors }));
+      toast.error("Provjeri unos.");
+      return;
+    }
+    setPriceEditSaving((prev) => ({ ...prev, [periodId]: true }));
+    try {
+      const normalizedTiers = draft.tiers
+        .map((tier) => {
+          const result = {
+            minDays: Number(tier.minDays),
+            price: Number(tier.price),
+          };
+          const rawMax = tier.maxDays;
+          if (rawMax !== "" && rawMax !== null && rawMax !== undefined) {
+            result.maxDays = Number(rawMax);
+          }
+          return result;
+        })
+        .sort((a, b) => a.minDays - b.minDays);
+      const numericCarId = Number(carId);
+      await adminUpdateCarPrice(periodId, {
+        carId: Number.isFinite(numericCarId) ? numericCarId : carId,
+        startingDate: draft.startDate,
+        endingDate: draft.endDate,
+        tiers: normalizedTiers,
+      });
+      toast.success("Cijene su ažurirane.");
+      setPriceEditingId(null);
+      await loadPricePeriods();
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri ažuriranju cijena.");
+    } finally {
+      setPriceEditSaving((prev) => ({ ...prev, [periodId]: false }));
+    }
+  };
+
+  const handlePriceDelete = async (periodId) => {
+    if (!periodId || priceDeleteLoading[periodId]) {
+      return;
+    }
+    const confirmed =
+      typeof window !== "undefined"
+        ? window.confirm("Da li ste sigurni da želite da obrišete ovaj period?")
+        : false;
+    if (!confirmed) {
+      return;
+    }
+    setPriceDeleteLoading((prev) => ({ ...prev, [periodId]: true }));
+    try {
+      await adminDeleteCarPrice(periodId);
+      toast.success("Period je obrisan.");
+      if (priceEditingId === periodId) {
+        setPriceEditingId(null);
+      }
+      await loadPricePeriods();
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri brisanju cijena.");
+    } finally {
+      setPriceDeleteLoading((prev) => ({ ...prev, [periodId]: false }));
+    }
+  };
+
+  const loadPricePeriods = async ({ signal } = {}) => {
+    if (!carId) {
+      return;
+    }
+    setPriceLoading(true);
+    setPriceLoadError("");
+    try {
+      const payload = await adminGetCarPrices(carId, { signal });
+      const rawItems = payload?.data || payload?.items || payload?.prices || [];
+      const items = Array.isArray(rawItems) ? rawItems : [];
+      const normalized = items
+        .map((item) => ({
+          id: item?.id,
+          carId: item?.carId,
+          startingDate: normalizeRemoteDate(item?.startingDate),
+          endingDate: normalizeRemoteDate(item?.endingDate),
+          tiers: Array.isArray(item?.tiers) ? item.tiers : [],
+        }))
+        .filter((item) => item.startingDate && item.endingDate)
+        .sort(
+          (a, b) =>
+            toDayNumber(a.startingDate) - toDayNumber(b.startingDate)
+        );
+      setPricePeriods(normalized);
+      setPriceMeta(payload?.meta || null);
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      setPriceLoadError(err?.message || "Neuspješno učitavanje cijena.");
+    } finally {
+      setPriceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "prices") {
+      return;
+    }
+    const controller = new AbortController();
+    loadPricePeriods({ signal: controller.signal });
+    return () => controller.abort();
+  }, [activeTab, carId]);
 
   const toggleVariation = (variationKey) => {
     setExpandedVariations((prev) => ({
@@ -417,11 +1324,51 @@ export default function CarDetailsTabs({ carId }) {
       delete next[variationKey];
       return next;
     });
+    setInstanceCoverFiles((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
+    setInstanceCoverPreviews((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
+    setInstanceGalleryFiles((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
+    setInstanceGalleryPreviews((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
+    setInstanceExistingCovers((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
+    setInstanceExistingGalleries((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
     setExpandedVariations((prev) => {
       const next = { ...prev };
       delete next[variationKey];
       return next;
     });
+    const coverUrl = instanceCoverUrlsRef.current[variationKey];
+    if (coverUrl) {
+      URL.revokeObjectURL(coverUrl);
+      delete instanceCoverUrlsRef.current[variationKey];
+    }
+    const galleryUrls = instanceGalleryUrlsRef.current[variationKey];
+    if (Array.isArray(galleryUrls)) {
+      galleryUrls.forEach((url) => URL.revokeObjectURL(url));
+      delete instanceGalleryUrlsRef.current[variationKey];
+    }
   };
 
   const confirmVariationDelete = (registrationNumber) =>
@@ -603,6 +1550,8 @@ export default function CarDetailsTabs({ carId }) {
           carId: Number.isFinite(numericCarId) ? numericCarId : carId,
           registrationNumber: edit.registrationNumber,
           additionalEquipment: edit.additionalEquipment,
+          coverImage: instanceCoverFiles[variationKey],
+          images: instanceGalleryFiles[variationKey],
         });
         const normalized = normalizeInstancesData(created)[0] ?? created;
         const merged = {
@@ -639,6 +1588,8 @@ export default function CarDetailsTabs({ carId }) {
           price: edit.price,
           status: edit.status,
           additionalEquipment: edit.additionalEquipment,
+          coverImage: instanceCoverFiles[variationKey],
+          images: instanceGalleryFiles[variationKey],
         });
         if (edit.savedRegistrationNumber !== edit.registrationNumber) {
           setInstanceEdits((prev) => ({
@@ -712,6 +1663,48 @@ export default function CarDetailsTabs({ carId }) {
     setPendingFocusVariationKey(variationKey);
   };
 
+  const handleInstanceCoverChange = (variationKey, event) => {
+    const file = event.target.files?.[0];
+    const existingUrl = instanceCoverUrlsRef.current[variationKey];
+    if (existingUrl) {
+      URL.revokeObjectURL(existingUrl);
+      delete instanceCoverUrlsRef.current[variationKey];
+    }
+    if (!file) {
+      setInstanceCoverFiles((prev) => ({ ...prev, [variationKey]: null }));
+      setInstanceCoverPreviews((prev) => ({ ...prev, [variationKey]: "" }));
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    instanceCoverUrlsRef.current[variationKey] = url;
+    setInstanceCoverFiles((prev) => ({ ...prev, [variationKey]: file }));
+    setInstanceCoverPreviews((prev) => ({ ...prev, [variationKey]: url }));
+  };
+
+  const handleInstanceGalleryChange = (variationKey, event) => {
+    const files = Array.from(event.target.files || []);
+    const existingUrls = instanceGalleryUrlsRef.current[variationKey];
+    if (Array.isArray(existingUrls)) {
+      existingUrls.forEach((url) => URL.revokeObjectURL(url));
+    }
+    if (!files.length) {
+      setInstanceGalleryFiles((prev) => ({ ...prev, [variationKey]: [] }));
+      setInstanceGalleryPreviews((prev) => ({ ...prev, [variationKey]: [] }));
+      instanceGalleryUrlsRef.current[variationKey] = [];
+      return;
+    }
+    const previews = files.map((file) => {
+      const url = URL.createObjectURL(file);
+      return { name: file.name, url };
+    });
+    instanceGalleryUrlsRef.current[variationKey] = previews.map((p) => p.url);
+    setInstanceGalleryFiles((prev) => ({ ...prev, [variationKey]: files }));
+    setInstanceGalleryPreviews((prev) => ({
+      ...prev,
+      [variationKey]: previews,
+    }));
+  };
+
   if (loading) {
     return <div className="alert-message">Učitavanje...</div>;
   }
@@ -721,6 +1714,81 @@ export default function CarDetailsTabs({ carId }) {
   if (!car) {
     return <div className="alert-message">Vozilo nije pronađeno.</div>;
   }
+
+  const calendarData = buildCalendarDays(calendarMonth);
+  const rangeDays = calculateRangeDays(
+    priceRange.startDate,
+    priceRange.endDate
+  );
+  const priceTierErrors = Array.isArray(priceErrors.tiers)
+    ? priceErrors.tiers
+    : [];
+  const selectedStart = toDayNumber(priceRange.startDate);
+  const selectedEnd = toDayNumber(priceRange.endDate);
+  const overlappingPeriods =
+    Number.isFinite(selectedStart) && Number.isFinite(selectedEnd)
+      ? pricePeriods.filter((period) => {
+          const periodStart = toDayNumber(period.startingDate);
+          const periodEnd = toDayNumber(period.endingDate);
+          if (!Number.isFinite(periodStart) || !Number.isFinite(periodEnd)) {
+            return false;
+          }
+          return periodStart <= selectedEnd && periodEnd >= selectedStart;
+        })
+      : [];
+  const pricePeriodRanges = pricePeriods
+    .map((period) => {
+      const start = toDayNumber(period.startingDate);
+      const end = toDayNumber(period.endingDate);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return null;
+      }
+      return {
+        id: period.id,
+        start,
+        end,
+        label: `${formatDisplayDate(period.startingDate)} - ${formatDisplayDate(
+          period.endingDate
+        )}`,
+      };
+    })
+    .filter(Boolean);
+
+  const getExistingCount = (iso) => {
+    if (!iso) {
+      return 0;
+    }
+    const dayNumber = toDayNumber(iso);
+    if (!Number.isFinite(dayNumber)) {
+      return 0;
+    }
+    return pricePeriodRanges.reduce((count, range) => {
+      if (dayNumber >= range.start && dayNumber <= range.end) {
+        return count + 1;
+      }
+      return count;
+    }, 0);
+  };
+
+  const getExistingTitles = (iso) => {
+    if (!iso) {
+      return "";
+    }
+    const dayNumber = toDayNumber(iso);
+    if (!Number.isFinite(dayNumber)) {
+      return "";
+    }
+    const matches = pricePeriodRanges.filter(
+      (range) => dayNumber >= range.start && dayNumber <= range.end
+    );
+    if (!matches.length) {
+      return "";
+    }
+    const labels = matches.slice(0, 2).map((range) => range.label);
+    const suffix =
+      matches.length > 2 ? ` (+${matches.length - 2} više)` : "";
+    return `Cjenovni periodi: ${labels.join(", ")}${suffix}`;
+  };
 
   return (
     <div className="car-details-tabs">
@@ -738,6 +1806,13 @@ export default function CarDetailsTabs({ carId }) {
           onClick={() => setActiveTab("variations")}
         >
           Varijacije
+        </button>
+        <button
+          type="button"
+          className={`tab ${activeTab === "prices" ? "active" : ""}`}
+          onClick={() => setActiveTab("prices")}
+        >
+          Cijene
         </button>
       </div>
       <div className="tab-panel">
@@ -773,7 +1848,57 @@ export default function CarDetailsTabs({ carId }) {
                   {imageName && (
                     <p className="image-filename">{imageName}</p>
                   )}
+                  {fieldErrors.coverImage && (
+                    <p className="field-error-text">{fieldErrors.coverImage}</p>
+                  )}
                 </label>
+              </div>
+              <div className="image-upload">
+                <label className="image-upload-label">
+                  <span>Galerija (dodatne slike)</span>
+                  <div className="image-upload-control">
+                    {galleryPreviews.length ? (
+                      galleryPreviews.map((preview) => (
+                        <div className="image-preview has-image" key={preview.url}>
+                          <img src={preview.url} alt={preview.name} />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="image-preview">
+                        <span>Dodaj slike</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGalleryChange}
+                    />
+                  </div>
+                  {galleryFiles.length > 0 && (
+                    <p className="image-filename">
+                      Odabrano: {galleryFiles.length}
+                    </p>
+                  )}
+                  {fieldErrors.images && (
+                    <p className="field-error-text">{fieldErrors.images}</p>
+                  )}
+                </label>
+                {existingGalleryImages.length > 0 && (
+                  <div className="existing-images">
+                    <p className="image-filename">Postojeće slike:</p>
+                    <div className="image-preview-grid">
+                      {existingGalleryImages.map((image, index) => (
+                        <div
+                          className="image-preview has-image"
+                          key={`${image}-${index}`}
+                        >
+                          <img src={image} alt={`Postojeća slika ${index + 1}`} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="field-grid two-columns">
                 {[
@@ -1015,7 +2140,7 @@ export default function CarDetailsTabs({ carId }) {
               </div>
             </div>
           </form>
-        ) : (
+        ) : activeTab === "variations" ? (
           <div className="form-section variations-section">
             <div className="section-heading">
               <div> 
@@ -1053,6 +2178,20 @@ export default function CarDetailsTabs({ carId }) {
                   const hasTextValue =
                     String(newValue).trim().length > 0;
                   const newIsActive = newEntry.isActive ?? true;
+                  const variationCoverPreview =
+                    instanceCoverPreviews[variationKey] ||
+                    instanceExistingCovers[variationKey] ||
+                    "";
+                  const variationCoverName =
+                    instanceCoverFiles[variationKey]?.name || "";
+                  const variationGalleryPreviews =
+                    instanceGalleryPreviews[variationKey] || [];
+                  const variationGalleryFiles =
+                    instanceGalleryFiles[variationKey] || [];
+                  const existingGallery =
+                    instanceExistingGalleries[variationKey] || [];
+                  const variationThumb =
+                    variationCoverPreview || existingGallery[0] || "";
 
                   return (
                     <div
@@ -1066,7 +2205,17 @@ export default function CarDetailsTabs({ carId }) {
                     >
                       <div className="variation-header">
                         <div className="variation-title">
-                          <span className="variation-thumb" aria-hidden="true" />
+                          <span
+                            className={`variation-thumb ${
+                              variationThumb ? "has-image" : ""
+                            }`}
+                            style={
+                              variationThumb
+                                ? { backgroundImage: `url(${variationThumb})` }
+                                : undefined
+                            }
+                            aria-hidden="true"
+                          />
                           <p className="variation-label">
                             Varijacija #{variationNumber} · {variationLabelSuffix}
                           </p> 
@@ -1103,7 +2252,42 @@ export default function CarDetailsTabs({ carId }) {
                       {expanded && (
                         <div className="variation-body">
                           <div className="field-grid two-columns">
-                            <VariationImageUpload />
+                            <div className="image-upload">
+                              <label className="image-upload-label">
+                                <span>Cover slika varijacije</span>
+                                <div className="image-upload-control">
+                                  <div
+                                    className={`image-preview ${
+                                      variationCoverPreview ? "has-image" : ""
+                                    }`}
+                                  >
+                                    {variationCoverPreview ? (
+                                      <img
+                                        src={variationCoverPreview}
+                                        alt="Cover slika varijacije"
+                                      />
+                                    ) : (
+                                      <span>Dodaj sliku</span>
+                                    )}
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(event) =>
+                                      handleInstanceCoverChange(
+                                        variationKey,
+                                        event
+                                      )
+                                    }
+                                  />
+                                </div>
+                                {variationCoverName && (
+                                  <p className="image-filename">
+                                    {variationCoverName}
+                                  </p>
+                                )}
+                              </label>
+                            </div>
                             <label className="variation-registration">
                               <span>Registracija</span>
                               <input
@@ -1135,6 +2319,64 @@ export default function CarDetailsTabs({ carId }) {
                                 </p>
                               )}
                             </label>
+                          </div>
+                          <div className="image-upload">
+                            <label className="image-upload-label">
+                              <span>Galerija (dodatne slike)</span>
+                              <div className="image-upload-control">
+                                {variationGalleryPreviews.length ? (
+                                  variationGalleryPreviews.map((preview) => (
+                                    <div
+                                      className="image-preview has-image"
+                                      key={preview.url}
+                                    >
+                                      <img
+                                        src={preview.url}
+                                        alt={preview.name}
+                                      />
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="image-preview">
+                                    <span>Dodaj slike</span>
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  onChange={(event) =>
+                                    handleInstanceGalleryChange(
+                                      variationKey,
+                                      event
+                                    )
+                                  }
+                                />
+                              </div>
+                              {variationGalleryFiles.length > 0 && (
+                                <p className="image-filename">
+                                  Odabrano: {variationGalleryFiles.length}
+                                </p>
+                              )}
+                            </label>
+                            {existingGallery.length > 0 && (
+                              <div className="existing-images">
+                                <p className="image-filename">Postojeće slike:</p>
+                                <div className="image-preview-grid">
+                                  {existingGallery.map((image, index) => (
+                                    <div
+                                      className="image-preview has-image"
+                                      key={`${image}-${index}`}
+                                    >
+                                      <img
+                                        src={image}
+                                        alt={`Postojeća slika ${index + 1}`}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <div className="variation-equipment">
                             <p className="variation-section-title">
@@ -1268,6 +2510,597 @@ export default function CarDetailsTabs({ carId }) {
                 })
               ) : (
                 <div className="alert-message">Nema varijacija za ovo vozilo.</div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="form-section price-section">
+            <div className="section-heading">
+              <div>
+                <h3>Cjenovni periodi</h3>
+                <p className="eyebrow">
+                  Definišite raspon datuma i cijene po broju dana.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="ghost-action"
+                onClick={handleResetPriceRange}
+              >
+                Resetuj raspon
+              </button>
+            </div>
+            <div className="price-range-grid">
+              <div className="price-calendar">
+                <div className="calendar-header">
+                  <button
+                    type="button"
+                    className="calendar-nav"
+                    onClick={() =>
+                      setCalendarMonth((prev) => addMonths(prev, -1))
+                    }
+                  >
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <div className="calendar-title">
+                    {MONTH_LABELS[calendarData.month]} {calendarData.year}
+                  </div>
+                  <button
+                    type="button"
+                    className="calendar-nav"
+                    onClick={() =>
+                      setCalendarMonth((prev) => addMonths(prev, 1))
+                    }
+                  >
+                    <span aria-hidden="true">›</span>
+                  </button>
+                </div>
+                <div className="calendar-weekdays">
+                  {WEEKDAY_LABELS.map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+                <div className="calendar-grid">
+                  {calendarData.days.map((day) => {
+                    const startMatch =
+                      priceRange.startDate && day.iso === priceRange.startDate;
+                    const endMatch =
+                      priceRange.endDate && day.iso === priceRange.endDate;
+                    const inRange =
+                      day.iso &&
+                      priceRange.startDate &&
+                      priceRange.endDate &&
+                      toDayNumber(day.iso) >= toDayNumber(priceRange.startDate) &&
+                      toDayNumber(day.iso) <= toDayNumber(priceRange.endDate);
+                    const existingCount = day.isCurrentMonth
+                      ? getExistingCount(day.iso)
+                      : 0;
+                    const hasExisting = existingCount > 0;
+                    const existingOverlap = existingCount > 1;
+                    const className = `calendar-day${
+                      day.isCurrentMonth ? "" : " outside"
+                    }${inRange ? " in-range" : ""}${
+                      startMatch ? " range-start" : ""
+                    }${endMatch ? " range-end" : ""}${
+                      hasExisting ? " has-existing" : ""
+                    }${existingOverlap ? " has-overlap" : ""}`;
+                    const title = hasExisting ? getExistingTitles(day.iso) : "";
+
+                    return (
+                      <button
+                        type="button"
+                        key={day.key}
+                        className={className}
+                        onClick={() => handleCalendarSelect(day.iso)}
+                        disabled={!day.isCurrentMonth}
+                        title={title}
+                      >
+                        <span className="day-number">{day.label || ""}</span>
+                        {hasExisting && (
+                          <span
+                            className={`day-marker${
+                              existingOverlap ? " overlap" : ""
+                            }`}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="calendar-legend">
+                  <span className="legend-item">
+                    <span className="legend-swatch in-range" />
+                    Raspon
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-swatch start" />
+                    Početak
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-swatch end" />
+                    Kraj
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-swatch existing" />
+                    Postojeće cijene
+                  </span>
+                </div>
+              </div>
+              <div className="price-range-form">
+                <div className="field-grid two-columns">
+                  <label>
+                    <span>Početni datum</span>
+                    <input
+                      type="date"
+                      value={priceRange.startDate}
+                      onChange={handlePriceRangeInput("startDate")}
+                      className={priceErrors.startDate ? "input-invalid" : ""}
+                    />
+                    {priceErrors.startDate && (
+                      <p className="field-error-text">
+                        {priceErrors.startDate}
+                      </p>
+                    )}
+                  </label>
+                  <label>
+                    <span>Krajnji datum</span>
+                    <input
+                      type="date"
+                      value={priceRange.endDate}
+                      onChange={handlePriceRangeInput("endDate")}
+                      className={priceErrors.endDate ? "input-invalid" : ""}
+                    />
+                    {priceErrors.endDate && (
+                      <p className="field-error-text">
+                        {priceErrors.endDate}
+                      </p>
+                    )}
+                  </label>
+                </div>
+              <div className="range-summary">
+                  <p className="summary-label">Odabrani period</p>
+                  <p className="summary-value">
+                    {priceRange.startDate && priceRange.endDate
+                      ? `${formatDisplayDate(priceRange.startDate)} - ${formatDisplayDate(
+                          priceRange.endDate
+                        )} (${rangeDays} dana)`
+                      : "Raspon nije odabran."}
+                  </p>
+                  {overlappingPeriods.length > 0 && (
+                    <p className="summary-warning">
+                      Odabrani raspon se preklapa sa postojećim cijenama (
+                      {overlappingPeriods.length}).
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="price-tiers">
+              <div className="price-tier-header">
+                <span>Min dana</span>
+                <span>Max dana</span>
+                <span>Cijena</span>
+                <span />
+              </div>
+              {priceTiers.map((tier, index) => {
+                const tierError = priceTierErrors[index] || {};
+                return (
+                  <div className="price-tier-row" key={`tier-${index}`}>
+                    <label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={tier.minDays ?? ""}
+                        onChange={(event) =>
+                          handlePriceTierChange(
+                            index,
+                            "minDays",
+                            event.target.value
+                          )
+                        }
+                        className={tierError.minDays ? "input-invalid" : ""}
+                      />
+                      {tierError.minDays && (
+                        <p className="field-error-text">{tierError.minDays}</p>
+                      )}
+                    </label>
+                    <label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Bez limita"
+                        value={tier.maxDays ?? ""}
+                        onChange={(event) =>
+                          handlePriceTierChange(
+                            index,
+                            "maxDays",
+                            event.target.value
+                          )
+                        }
+                        className={tierError.maxDays ? "input-invalid" : ""}
+                      />
+                      {tierError.maxDays && (
+                        <p className="field-error-text">{tierError.maxDays}</p>
+                      )}
+                    </label>
+                    <label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        value={tier.price ?? ""}
+                        onChange={(event) =>
+                          handlePriceTierChange(
+                            index,
+                            "price",
+                            event.target.value
+                          )
+                        }
+                        className={tierError.price ? "input-invalid" : ""}
+                      />
+                      {tierError.price && (
+                        <p className="field-error-text">{tierError.price}</p>
+                      )}
+                    </label>
+                    <button
+                      type="button"
+                      className="link-button danger"
+                      onClick={() => handleRemovePriceTier(index)}
+                      disabled={priceTiers.length === 1}
+                    >
+                      Ukloni
+                    </button>
+                  </div>
+                );
+              })}
+              {typeof priceErrors.tiers === "string" && (
+                <p className="field-error-text">{priceErrors.tiers}</p>
+              )}
+              <div className="price-tier-actions">
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={handleAddPriceTier}
+                >
+                  + Dodaj nivo
+                </button>
+              </div>
+              <div className="tier-summary">
+                {priceTiers.map((tier, index) => (
+                  <div className="tier-chip" key={`tier-summary-${index}`}>
+                    {formatTierLabel(tier)} ·{" "}
+                    {tier.price ? `${tier.price} EUR` : "Bez cijene"}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="form-actions price-save-actions">
+              <button
+                type="button"
+                className="primary-action"
+                onClick={handlePriceSave}
+                disabled={priceSaving}
+              >
+                {priceSaving ? "Sačuvaj..." : "Sačuvaj cijene"}
+              </button>
+            </div>
+            <div className="price-periods">
+              <div className="price-periods-header"> 
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={() => loadPricePeriods()}
+                  disabled={priceLoading}
+                >
+                  {priceLoading ? "Učitavam..." : "Osvježi"}
+                </button>
+              </div>
+              {priceLoadError && (
+                <p className="field-error-text">{priceLoadError}</p>
+              )}
+              {priceLoading && !pricePeriods.length ? (
+                <div className="alert-message">Učitavanje cijena...</div>
+              ) : pricePeriods.length ? (
+                <div className="price-period-list">
+                  {pricePeriods.map((period) => {
+                    const isEditing = priceEditingId === period.id;
+                    const editDraft =
+                      priceEditDrafts[period.id] || buildPriceEditDraft(period);
+                    const editErrors = priceEditErrors[period.id] || {};
+                    const tierErrors = Array.isArray(editErrors.tiers)
+                      ? editErrors.tiers
+                      : [];
+                    const periodDays = calculateRangeDays(
+                      period.startingDate,
+                      period.endingDate
+                    );
+                    const periodStart = toDayNumber(period.startingDate);
+                    const periodEnd = toDayNumber(period.endingDate);
+                    const overlapsSelection =
+                      Number.isFinite(selectedStart) &&
+                      Number.isFinite(selectedEnd) &&
+                      Number.isFinite(periodStart) &&
+                      Number.isFinite(periodEnd) &&
+                      periodStart <= selectedEnd &&
+                      periodEnd >= selectedStart;
+                    return (
+                      <div className="price-period-card" key={period.id}>
+                        <div className="price-period-header">
+                          <div className="price-period-title">
+                            <span className="period-label">
+                              Cjenovni period
+                            </span>
+                            <span className="period-range">
+                              {formatDisplayDate(period.startingDate)} -{" "}
+                              {formatDisplayDate(period.endingDate)}
+                            </span>
+                            {periodDays ? (
+                              <span className="period-days">
+                                {periodDays} dana
+                              </span>
+                            ) : null}
+                            <span className="period-id">ID #{period.id}</span>
+                            {overlapsSelection ? (
+                              <span className="period-overlap">
+                                Preklapa se sa izborom
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="price-period-actions">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => handlePriceEditStart(period)}
+                              aria-label="Uredi period"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  fill="currentColor"
+                                  d="M16.5 3.5a2.1 2.1 0 0 1 3 3l-9.4 9.4-4.1.6.6-4.1 9.4-9.4zm-2.1 3.5L6.1 15.3l-.2 1.4 1.4-.2L15.6 8.2l-1.2-1.2z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button danger"
+                              onClick={() => handlePriceDelete(period.id)}
+                              aria-label="Obriši period"
+                              disabled={priceDeleteLoading[period.id]}
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  fill="currentColor"
+                                  d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9z"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        {isEditing ? (
+                          <div className="price-period-edit">
+                            <div className="field-grid two-columns">
+                              <label>
+                                <span>Početni datum</span>
+                                <input
+                                  type="date"
+                                  value={editDraft.startDate}
+                                  onChange={(event) =>
+                                    handlePriceEditFieldChange(
+                                      period.id,
+                                      "startDate",
+                                      event.target.value
+                                    )
+                                  }
+                                  className={
+                                    editErrors.startDate ? "input-invalid" : ""
+                                  }
+                                />
+                                {editErrors.startDate && (
+                                  <p className="field-error-text">
+                                    {editErrors.startDate}
+                                  </p>
+                                )}
+                              </label>
+                              <label>
+                                <span>Krajnji datum</span>
+                                <input
+                                  type="date"
+                                  value={editDraft.endDate}
+                                  onChange={(event) =>
+                                    handlePriceEditFieldChange(
+                                      period.id,
+                                      "endDate",
+                                      event.target.value
+                                    )
+                                  }
+                                  className={
+                                    editErrors.endDate ? "input-invalid" : ""
+                                  }
+                                />
+                                {editErrors.endDate && (
+                                  <p className="field-error-text">
+                                    {editErrors.endDate}
+                                  </p>
+                                )}
+                              </label>
+                            </div>
+                            <div className="price-tier-header small">
+                              <span>Min dana</span>
+                              <span>Max dana</span>
+                              <span>Cijena</span>
+                              <span />
+                            </div>
+                            <div className="price-tier-list">
+                              {(editDraft.tiers || []).map((tier, index) => {
+                                const tierError = tierErrors[index] || {};
+                                return (
+                                  <div
+                                    className="price-tier-row"
+                                    key={`edit-${period.id}-${index}`}
+                                  >
+                                    <label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={tier.minDays ?? ""}
+                                        onChange={(event) =>
+                                          handlePriceEditTierChange(
+                                            period.id,
+                                            index,
+                                            "minDays",
+                                            event.target.value
+                                          )
+                                        }
+                                        className={
+                                          tierError.minDays
+                                            ? "input-invalid"
+                                            : ""
+                                        }
+                                      />
+                                      {tierError.minDays && (
+                                        <p className="field-error-text">
+                                          {tierError.minDays}
+                                        </p>
+                                      )}
+                                    </label>
+                                    <label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="Bez limita"
+                                        value={tier.maxDays ?? ""}
+                                        onChange={(event) =>
+                                          handlePriceEditTierChange(
+                                            period.id,
+                                            index,
+                                            "maxDays",
+                                            event.target.value
+                                          )
+                                        }
+                                        className={
+                                          tierError.maxDays
+                                            ? "input-invalid"
+                                            : ""
+                                        }
+                                      />
+                                      {tierError.maxDays && (
+                                        <p className="field-error-text">
+                                          {tierError.maxDays}
+                                        </p>
+                                      )}
+                                    </label>
+                                    <label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        step="0.01"
+                                        value={tier.price ?? ""}
+                                        onChange={(event) =>
+                                          handlePriceEditTierChange(
+                                            period.id,
+                                            index,
+                                            "price",
+                                            event.target.value
+                                          )
+                                        }
+                                        className={
+                                          tierError.price
+                                            ? "input-invalid"
+                                            : ""
+                                        }
+                                      />
+                                      {tierError.price && (
+                                        <p className="field-error-text">
+                                          {tierError.price}
+                                        </p>
+                                      )}
+                                    </label>
+                                    <button
+                                      type="button"
+                                      className="link-button danger"
+                                      onClick={() =>
+                                        handlePriceEditRemoveTier(
+                                          period.id,
+                                          index
+                                        )
+                                      }
+                                      disabled={editDraft.tiers.length === 1}
+                                    >
+                                      Ukloni
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {typeof editErrors.tiers === "string" && (
+                              <p className="field-error-text">
+                                {editErrors.tiers}
+                              </p>
+                            )}
+                            <div className="price-tier-actions">
+                              <button
+                                type="button"
+                                className="ghost-action"
+                                onClick={() => handlePriceEditAddTier(period.id)}
+                              >
+                                + Dodaj nivo
+                              </button>
+                            </div>
+                            <div className="variation-actions">
+                              <button
+                                type="button"
+                                className="primary-action small"
+                                onClick={() => handlePriceEditSave(period.id)}
+                                disabled={priceEditSaving[period.id]}
+                              >
+                                {priceEditSaving[period.id]
+                                  ? "Sačuvaj..."
+                                  : "Sačuvaj"}
+                              </button>
+                              <button
+                                type="button"
+                                className="ghost-action"
+                                onClick={handlePriceEditCancel}
+                              >
+                                Poništi
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="price-period-tiers">
+                            {period.tiers.length ? (
+                              period.tiers.map((tier) => (
+                                <div
+                                  className="price-period-tier"
+                                  key={`tier-${period.id}-${tier.id || tier.minDays}`}
+                                >
+                                  {formatTierLabel(tier)} · {tier.price} EUR
+                                </div>
+                              ))
+                            ) : (
+                              <span className="secondary">
+                                Nema definisanih nivoa.
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="alert-message">Nema definisanih cijena.</div>
               )}
             </div>
           </div>

@@ -14,6 +14,7 @@ export default function Footer1({
   parentClass = "boxcar-footer footer-style-one cus-st-1",
 }) {
   const { t } = useLanguage();
+  const year = new Date().getFullYear();
   return (
     <footer className={parentClass}>
       <div className="footer-top">
@@ -35,7 +36,7 @@ export default function Footer1({
         <div className="boxcar-container">
           <div className="inner-container">
             <div className="copyright-text wow fadeInUp">
-              © <a href="#">2025 {t("All rights reserved.")}</a>
+              © <a href="#">{year} {t("All rights reserved.")}</a>
             </div>
             <ul className="footer-nav wow fadeInUp" data-wow-delay="200ms">
               <li>

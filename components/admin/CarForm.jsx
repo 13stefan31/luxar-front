@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 const ENGINE_TYPE_OPTIONS = [
@@ -67,8 +67,15 @@ export default function CarForm({
     ...initialValues,
     doesHaveAirConditioning: Boolean(initialValues.doesHaveAirConditioning),
   });
+  const [coverPreview, setCoverPreview] = useState("");
+  const [coverName, setCoverName] = useState("");
+  const [coverFile, setCoverFile] = useState(null);
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [equipmentInput, setEquipmentInput] = useState({ name: "", value: "" });
+  const coverObjectUrlRef = useRef("");
+  const galleryObjectUrlsRef = useRef([]);
 
   useEffect(() => {
     setValues((prev) => ({
@@ -84,6 +91,20 @@ export default function CarForm({
     }
     setFieldErrors((prev) => ({ ...prev, ...validationErrors }));
   }, [validationErrors]);
+
+  useEffect(
+    () => () => {
+      if (coverObjectUrlRef.current) {
+        URL.revokeObjectURL(coverObjectUrlRef.current);
+        coverObjectUrlRef.current = "";
+      }
+      if (galleryObjectUrlsRef.current.length) {
+        galleryObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+        galleryObjectUrlsRef.current = [];
+      }
+    },
+    []
+  );
 
   const clearFieldError = (field) => {
     setFieldErrors((prev) => {
@@ -105,6 +126,47 @@ export default function CarForm({
       [field]: value,
     }));
     clearFieldError(field);
+  };
+
+  const handleCoverChange = (event) => {
+    const file = event.target.files?.[0];
+    if (coverObjectUrlRef.current) {
+      URL.revokeObjectURL(coverObjectUrlRef.current);
+      coverObjectUrlRef.current = "";
+    }
+    if (!file) {
+      setCoverFile(null);
+      setCoverPreview("");
+      setCoverName("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    coverObjectUrlRef.current = url;
+    setCoverFile(file);
+    setCoverPreview(url);
+    setCoverName(file.name);
+    clearFieldError("coverImage");
+  };
+
+  const handleGalleryChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (galleryObjectUrlsRef.current.length) {
+      galleryObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      galleryObjectUrlsRef.current = [];
+    }
+    if (!files.length) {
+      setGalleryFiles([]);
+      setGalleryPreviews([]);
+      return;
+    }
+    const previews = files.map((file) => {
+      const url = URL.createObjectURL(file);
+      galleryObjectUrlsRef.current.push(url);
+      return { name: file.name, url };
+    });
+    setGalleryFiles(files);
+    setGalleryPreviews(previews);
+    clearFieldError("images");
   };
 
   const validateForm = (currentValues) => {
@@ -194,6 +256,8 @@ export default function CarForm({
     const payload = {
       ...payloadValues,
       equipment: values.equipment || {},
+      coverImage: coverFile || undefined,
+      images: galleryFiles.length ? galleryFiles : undefined,
     };
     numericFields.forEach((field) => {
       const numeric = Number(payload[field]);
@@ -345,6 +409,66 @@ export default function CarForm({
           <span>Klima</span>
           <input type="checkbox" checked={values.doesHaveAirConditioning} onChange={handleChange("doesHaveAirConditioning")} />
         </label>
+      </div>
+      <div className="section-heading">Slike vozila</div>
+      <div className="car-edit-images">
+        <div className="image-upload">
+          <label className="image-upload-label">
+            <span>Cover slika</span>
+            <div className="image-upload-control">
+              <div className={`image-preview ${coverPreview ? "has-image" : ""}`}>
+                {coverPreview ? (
+                  <img src={coverPreview} alt="Cover slika vozila" />
+                ) : (
+                  <span>Dodaj sliku</span>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                disabled={disabled}
+              />
+            </div>
+            {coverName && <p className="image-filename">{coverName}</p>}
+            {fieldErrors.coverImage && (
+              <p className="field-error-text">{fieldErrors.coverImage}</p>
+            )}
+          </label>
+        </div>
+        <div className="image-upload">
+          <label className="image-upload-label">
+            <span>Galerija (dodatne slike)</span>
+            <div className="image-upload-control">
+              {galleryPreviews.length ? (
+                galleryPreviews.map((preview) => (
+                  <div className="image-preview has-image" key={preview.url}>
+                    <img src={preview.url} alt={preview.name} />
+                  </div>
+                ))
+              ) : (
+                <div className="image-preview">
+                  <span>Dodaj slike</span>
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleGalleryChange}
+                disabled={disabled}
+              />
+            </div>
+            {galleryFiles.length > 0 && (
+              <p className="image-filename">
+                Odabrano: {galleryFiles.length}
+              </p>
+            )}
+            {fieldErrors.images && (
+              <p className="field-error-text">{fieldErrors.images}</p>
+            )}
+          </label>
+        </div>
       </div>
       <label className="full">
         <span>Opis</span>

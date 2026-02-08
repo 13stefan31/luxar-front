@@ -6,13 +6,27 @@ import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 import { getBadgeColor, getRandomBadges } from "@/lib/carBadges";
 import { getCarDetailHref } from "@/lib/carPaths";
-import { getInventoryApiHeaders, INVENTORY_API_ROOT } from "@/lib/inventoryApi";
+import {
+  getInventoryApiHeaders,
+  INVENTORY_API_ROOT,
+  normalizeInventoryImageUrl,
+} from "@/lib/inventoryApi";
 import PriceWithInfo from "@/components/common/PriceWithInfo";
 
 const API_URL = `${INVENTORY_API_ROOT}/cars`;
 const FALLBACK_IMAGE = "/images/car.webp";
 const RELATED_LIMIT = 8;
 const PRICE_STEP = 5;
+const VARIANT_SLIDER_SETTINGS = {
+  arrows: true,
+  dots: false,
+  infinite: false,
+  slidesToShow: 1,
+  slidesToScroll: 1,
+  adaptiveHeight: true,
+  speed: 400,
+  swipeToSlide: true,
+};
 
 const FUEL_LABELS = {
   D: "Diesel",
@@ -148,8 +162,12 @@ const mapCars = (rawData, t) => {
     const imageUrl = Array.isArray(car.images)
       ? car.images.find((image) => image?.path)?.path
       : null;
-    const mainImage =
+    const rawMainImage =
       imageUrl || car.image || car.image_url || FALLBACK_IMAGE;
+    const mainImage = normalizeInventoryImageUrl(
+      rawMainImage,
+      FALLBACK_IMAGE
+    );
     const rawInstances = car.instances || car.carInstances;
     const variants = Array.isArray(rawInstances)
       ? rawInstances.map((instance) => {
@@ -160,9 +178,13 @@ const mapCars = (rawData, t) => {
             instance.image ||
             instance.image_url ||
             mainImage;
+          const normalizedInstanceImage = normalizeInventoryImageUrl(
+            instanceImageUrl,
+            mainImage
+          );
           return {
             uuid: instance.uuid,
-            image: instanceImageUrl,
+            image: normalizedInstanceImage,
             additionalEquipmentBadges: formatAdditionalEquipmentBadges(
               instance.additional_equipment ?? instance.additionalEquipment,
               t
@@ -270,6 +292,67 @@ export default function RelatedCars() {
       ? expandedCar.priceValue
       : 0;
   const showPrice = basePriceValue > 0;
+
+  const renderVariantCard = (variant, index) => {
+    const isBase = index === 0;
+    const equipment = variant.equipment || [];
+    const differenceItems = equipment.filter(
+      (item) => !baseEquipmentSet.has(item)
+    );
+    const visibleDifferences = isBase
+      ? [t("Standard equipment")]
+      : differenceItems.length
+        ? differenceItems
+        : [t("Additional equipment not listed")];
+    const variantPriceValue =
+      showPrice && !isBase
+        ? basePriceValue + differenceItems.length * PRICE_STEP
+        : basePriceValue;
+    const priceLabel = showPrice ? variantPriceValue : 50;
+    const imageSrc = variant.image || expandedCar.images?.[0] || FALLBACK_IMAGE;
+    const imageAlt = `${expandedCar.title || t("Variant")} ${index + 1}`;
+    return (
+      <Link
+        key={variant.uuid || `${expandedCar.id}-${variant.index}`}
+        href={{
+          pathname: getCarDetailHref(expandedCar),
+          query: { instance: variant.uuid },
+        }}
+        className={`variant-card${isBase ? " is-base" : " is-upgrade"}`}
+        aria-selected={isBase ? "true" : "false"}
+      >
+        <div className="variant-card-media">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            fill
+            sizes="(max-width: 767px) 100vw, 200px"
+            className="variant-card-image"
+          />
+        </div>
+        <div className="variant-card-body">
+          <div className="variant-price">
+            <PriceWithInfo value={priceLabel} fallback={50} />
+          </div>
+          <div className="variant-diff-label">
+            {isBase ? t("Standard") : t("Includes additional")}
+          </div>
+          <ul className="variant-diffs">
+            {visibleDifferences.map((item, itemIndex) => (
+              <li key={`${variant.index}-diff-${itemIndex}`}>{item}</li>
+            ))}
+          </ul>
+          <div className="variant-footer">
+            <span className="variant-cta">{t("Details")}</span>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+  const variantSliderSettings = {
+    ...VARIANT_SLIDER_SETTINGS,
+    arrows: orderedVariants.length > 1,
+  };
 
   useEffect(() => {
     const container = sliderAreaRef.current;
@@ -459,77 +542,12 @@ export default function RelatedCars() {
                   </span>
                 </div>
                 <div className="variant-items">
-                  {orderedVariants.map((variant, index) => {
-                    const isBase = index === 0;
-                    const equipment = variant.equipment || [];
-                    const differenceItems = equipment.filter(
-                      (item) => !baseEquipmentSet.has(item)
-                    );
-                    const visibleDifferences = isBase
-                      ? [t("Standard equipment")]
-                      : differenceItems.length
-                        ? differenceItems
-                        : [t("Additional equipment not listed")];
-                    const variantPriceValue =
-                      showPrice && !isBase
-                        ? basePriceValue + differenceItems.length * PRICE_STEP
-                        : basePriceValue;
-                    const priceLabel = showPrice ? variantPriceValue : 50;
-                    const imageSrc =
-                      variant.image ||
-                      expandedCar.images?.[0] ||
-                      FALLBACK_IMAGE;
-                    const imageAlt = `${expandedCar.title || t("Variant")} ${
-                      index + 1
-                    }`;
-                    return (
-                      <Link
-                        key={
-                          variant.uuid || `${expandedCar.id}-${variant.index}`
-                        }
-                        href={{
-                          pathname: getCarDetailHref(expandedCar),
-                          query: { instance: variant.uuid },
-                        }}
-                        className={`variant-card${
-                          isBase ? " is-base" : " is-upgrade"
-                        }`}
-                        aria-selected={isBase ? "true" : "false"}
-                      >
-                        <div className="variant-card-media">
-                          <Image
-                            src={imageSrc}
-                            alt={imageAlt}
-                            fill
-                            sizes="(max-width: 767px) 100vw, 200px"
-                            className="variant-card-image"
-                          />
-                        </div>
-                        <div className="variant-card-body">
-                          <div className="variant-price">
-                            <PriceWithInfo value={priceLabel} fallback={50} />
-                          </div>
-                          <div className="variant-diff-label">
-                            {isBase
-                              ? t("Standard")
-                              : t("Includes additional")}
-                          </div>
-                          <ul className="variant-diffs">
-                            {visibleDifferences.map((item, itemIndex) => (
-                              <li key={`${variant.index}-diff-${itemIndex}`}>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="variant-footer">
-                            <span className="variant-cta">
-                              {t("Details")}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {orderedVariants.map(renderVariantCard)}
+                </div>
+                <div className="variant-items-slider">
+                  <Slider {...variantSliderSettings}>
+                    {orderedVariants.map(renderVariantCard)}
+                  </Slider>
                 </div>
               </div>
             </div>

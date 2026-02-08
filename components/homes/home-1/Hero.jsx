@@ -10,6 +10,10 @@ export default function Hero() {
   const [transmissionType, setTransmissionType] = useState("");
   const [fuelType, setFuelType] = useState("");
   const [manufactureYear, setManufactureYear] = useState("");
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [dropoffDate, setDropoffDate] = useState("");
+  const [dropoffTime, setDropoffTime] = useState("");
   const engineTypeOptions = useMemo(
     () => [
       { value: "", label: t("Engine Type") },
@@ -57,6 +61,21 @@ export default function Hero() {
     const query = params.toString();
     return query ? `/cars?${query}` : "/cars";
   }, [engineType, transmissionType, fuelType, manufactureYear]);
+  const dateTimeSearchHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const pickupDateTime =
+      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
+    const dropoffDateTime =
+      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
+    if (pickupDateTime) {
+      params.set("pickupDateTime", pickupDateTime);
+    }
+    if (dropoffDateTime) {
+      params.set("dropoffDateTime", dropoffDateTime);
+    }
+    const query = params.toString();
+    return query ? `/cars?${query}` : "/cars";
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
 
   return (
     <section className="boxcar-banner-section-v1">
@@ -70,6 +89,7 @@ export default function Hero() {
           </h2>
 
 
+          {/*
           <div className="form-tab-content">
             <div
               className="form-tab-content wow fadeInUp"
@@ -125,6 +145,84 @@ export default function Hero() {
                       <i className="flaticon-search" />
                       {t("Search vehicles")}
 
+                    </button>
+                  </Link>
+                </form>
+              </div>
+            </div>
+          </div>
+          */}
+
+          <div className="form-tab-content">
+            <div
+              className="form-tab-content wow fadeInUp"
+              data-wow-delay="350ms"
+            >
+              <div className="form-tab-pane current" id="date-time-tab">
+                <form
+                  onSubmit={(e) => e.preventDefault()}
+                  className="hero-filter-form hero-datetime-form"
+                >
+                  <div className="search-field line-r">
+                    <label htmlFor="pickupDate" className="search-label">
+                      {t("Pickup date")}
+                    </label>
+                    <input
+                      id="pickupDate"
+                      type="date"
+                      value={pickupDate}
+                      onChange={(e) => setPickupDate(e.target.value)}
+                      aria-label={t("Pickup date")}
+                      placeholder={t("Pickup date")}
+                    />
+                  </div>
+
+                  <div className="search-field line-r">
+                    <label htmlFor="pickupTime" className="search-label">
+                      {t("Pickup time")}
+                    </label>
+                    <input
+                      id="pickupTime"
+                      type="time"
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                      aria-label={t("Pickup time")}
+                      placeholder={t("Pickup time")}
+                    />
+                  </div>
+
+                  <div className="search-field line-r">
+                    <label htmlFor="dropoffDate" className="search-label">
+                      {t("Drop-off date")}
+                    </label>
+                    <input
+                      id="dropoffDate"
+                      type="date"
+                      value={dropoffDate}
+                      onChange={(e) => setDropoffDate(e.target.value)}
+                      aria-label={t("Drop-off date")}
+                      placeholder={t("Drop-off date")}
+                    />
+                  </div>
+
+                  <div className="search-field">
+                    <label htmlFor="dropoffTime" className="search-label">
+                      {t("Drop-off time")}
+                    </label>
+                    <input
+                      id="dropoffTime"
+                      type="time"
+                      value={dropoffTime}
+                      onChange={(e) => setDropoffTime(e.target.value)}
+                      aria-label={t("Drop-off time")}
+                      placeholder={t("Drop-off time")}
+                    />
+                  </div>
+
+                  <Link href={dateTimeSearchHref} className="form-submit">
+                    <button type="submit" className="theme-btn">
+                      <i className="flaticon-search" />
+                      {t("Search vehicles")}
                     </button>
                   </Link>
                 </form>

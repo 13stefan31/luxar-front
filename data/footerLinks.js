@@ -21,8 +21,8 @@ export const carBrands = [
   
 
 export const socialMediaLinks = [
-  { iconClass: "fab fa-facebook-f", link: "#" },
-  { iconClass: "fab fa-twitter", link: "#" },
-  { iconClass: "fab fa-instagram", link: "#" },
-  { iconClass: "fab fa-linkedin-in", link: "#" },
+  { iconClass: "fa-brands fa-facebook-f", link: "#" },
+  { iconClass: "fa-brands fa-twitter", link: "#" },
+  { iconClass: "fa-brands fa-instagram", link: "#" },
+  { iconClass: "fa-brands fa-linkedin-in", link: "#" },
 ];

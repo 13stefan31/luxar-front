@@ -11,7 +11,7 @@ export const metadata = {
 export default function ProfilePage() {
   return (
     <>
-      <div style={{ background: "var(--theme-color-dark)" }}>
+      <div className="admin-shell">
         <HeaderDashboard />
 
         <Profile />

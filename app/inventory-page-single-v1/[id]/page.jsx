@@ -1,7 +1,11 @@
 import Single1 from "@/components/carSingles/Single1";
 import Footer1 from "@/components/footers/Footer1";
 import Header1 from "@/components/headers/Header1";
-import { getInventoryApiHeaders, INVENTORY_API_ROOT } from "@/lib/inventoryApi";
+import {
+  getInventoryApiHeaders,
+  INVENTORY_API_ROOT,
+  normalizeInventoryImageUrl,
+} from "@/lib/inventoryApi";
 
 const FALLBACK_IMAGE = "/images/car.webp";
 const FUEL_LABELS = {
@@ -42,12 +46,15 @@ const resolveImages = (images) => {
   const paths = Array.isArray(images)
     ? images.map((image) => image?.path).filter(Boolean)
     : [];
-  const valid = paths.filter(isImageUrl);
+  const normalized = paths
+    .map((path) => normalizeInventoryImageUrl(path, ""))
+    .filter(Boolean);
+  const valid = normalized.filter(isImageUrl);
   if (valid.length) {
     return valid;
   }
-  if (paths.length) {
-    return [paths[0]];
+  if (normalized.length) {
+    return [normalized[0]];
   }
   return [FALLBACK_IMAGE];
 };

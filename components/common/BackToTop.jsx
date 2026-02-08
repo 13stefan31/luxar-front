@@ -28,17 +28,28 @@ const BackToTop = () => {
   }, []);
 
   return (
-    <>
+    <div className="floating-actions">
       {isVisible && (
-        <div
+        <button
+          type="button"
           className="scroll-to-top scroll-to-target"
           onClick={scrollToTop}
           style={{ display: "block" }}
+          aria-label="Back to top"
         >
           <span className="fa fa-angle-up"></span>
-        </div>
+        </button>
       )}
-    </>
+      <a
+        className="whatsapp-float"
+        href="https://wa.me/38267123456"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp"
+      >
+        <span className="fa-brands fa-whatsapp"></span>
+      </a>
+    </div>
   );
 };
 

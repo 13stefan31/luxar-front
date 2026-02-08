@@ -14,7 +14,7 @@ export default function CarDetailPage({ params }) {
   const { carId } = params;
   return (
     <>
-      <div style={{ background: "var(--theme-color-dark)" }}>
+      <div className="admin-shell">
         <HeaderDashboard />
         <section className="dashboard-widget">
           <div className="right-box">

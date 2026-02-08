@@ -44,8 +44,12 @@ const proxy = async (request, params, method) => {
   const headers = {};
   let body;
   if (method !== "DELETE") {
-    headers["Content-Type"] = "application/json";
-    body = await request.text();
+    const contentType = request.headers.get("content-type") || "";
+    const isMultipart = contentType.toLowerCase().includes("multipart/form-data");
+    body = isMultipart ? await request.formData() : await request.text();
+    if (!isMultipart) {
+      headers["Content-Type"] = contentType || "application/json";
+    }
   }
   if (token) {
     headers.Authorization = token;
@@ -65,7 +69,11 @@ const proxy = async (request, params, method) => {
 };
 
 export async function PUT(request, context) {
-  return proxy(request, context?.params, "PUT");
+  return proxy(request, context?.params, "POST");
+}
+
+export async function POST(request, context) {
+  return proxy(request, context?.params, "POST");
 }
 
 export async function DELETE(request, context) {

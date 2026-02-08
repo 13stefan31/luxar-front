@@ -8,6 +8,13 @@ import { supportedLanguages } from "@/locales";
 import { useLanguage } from "@/context/LanguageContext";
 import { getCarDetailHref } from "@/lib/carPaths";
 
+const headerSocialLinks = [
+  { label: "Instagram", href: "#", iconClass: "fa-brands fa-instagram" },
+  { label: "Facebook", href: "#", iconClass: "fa-brands fa-facebook-f" },
+  { label: "TikTok", href: "#", iconClass: "fa-brands fa-tiktok" },
+  { label: "YouTube", href: "#", iconClass: "fa-brands fa-youtube" }
+];
+
 export default function Header1({
   headerClass = "header-style-v1 header-default",
   white = false
@@ -42,16 +49,16 @@ export default function Header1({
                   {white ? (
                     <Image
                       alt=""
-                      title="Boxcar"
-                      src="/images/logo2.svg"
+                      title="Luxar rent a car"
+                      src="/images/logo2.png"
                       width="108"
                       height="26"
                     />
                   ) : (
                     <Image
                       alt=""
-                      title="Boxcar"
-                      src="/images/logo.svg"
+                        title="Luxar rent a car"
+                      src="/images/logo.png"
                       width={108}
                       height={26}
                     />
@@ -133,7 +140,7 @@ export default function Header1({
                       <g clipPath="url(#clip0_3114_6864)">
                         <path
                           d="M13.6109 0H5.05533C4.84037 0 4.66643 0.173943 4.66643 0.388901C4.66643 0.603859 4.84037 0.777802 5.05533 0.777802H12.6721L0.113697 13.3362C-0.0382246 13.4881 -0.0382246 13.7342 0.113697 13.8861C0.18964 13.962 0.289171 14 0.388666 14C0.488161 14 0.587656 13.962 0.663635 13.8861L13.222 1.3277V8.94447C13.222 9.15943 13.3959 9.33337 13.6109 9.33337C13.8259 9.33337 13.9998 9.15943 13.9998 8.94447V0.388901C13.9998 0.173943 13.8258 0 13.6109 0Z"
-                          fill="#405FF2"
+                          fill="currentColor"
                         />
                       </g>
                       <defs>
@@ -156,6 +163,15 @@ export default function Header1({
               {/* Main Menu End*/}
             </div>
             <div className="right-box">
+              <ul className="header-social" aria-label="Social links">
+                {headerSocialLinks.map((social) => (
+                  <li key={social.label}>
+                    <a href={social.href} aria-label={social.label}>
+                      <i className={social.iconClass} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
               <div className="language-dropdown">
                 <select
                   value={locale}
@@ -175,34 +191,19 @@ export default function Header1({
                 </select>
               </div>
               <div className="mobile-navigation">
-                {white ? (
-                  <a href="#nav-mobile" title="">
-                    <svg
-                      width={22}
-                      height={11}
-                      viewBox="0 0 22 11"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect width={22} height={2} fill="#050B20" />
-                      <rect y={9} width={22} height={2} fill="#050B20" />
-                    </svg>
-                  </a>
-                ) : (
-                  <a href="#nav-mobile" title="">
-                    {/* <i className="fa fa-bars"></i> */}
-                    <svg
-                      width={22}
-                      height={11}
-                      viewBox="0 0 22 11"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect width={22} height={2} fill="white" />
-                      <rect y={9} width={22} height={2} fill="white" />
-                    </svg>
-                  </a>
-                )}
+                <a href="#nav-mobile" title="">
+                  {/* <i className="fa fa-bars"></i> */}
+                  <svg
+                    width={22}
+                    height={11}
+                    viewBox="0 0 22 11"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect width={22} height={2} fill="currentColor" />
+                    <rect y={9} width={22} height={2} fill="currentColor" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>

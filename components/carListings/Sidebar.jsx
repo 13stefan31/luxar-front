@@ -4,13 +4,31 @@ import SelectComponent from "../common/SelectComponent";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 import { useCarFilters } from "./useCarFilters";
+
+const splitDateTime = (value) => {
+  if (!value) {
+    return { date: "", time: "" };
+  }
+  const [date, time] = String(value).split("T");
+  return { date: date || "", time: time || "" };
+};
 export default function Sidebar() {
   const { t } = useLanguage();
   const { filters, setFilters } = useCarFilters();
   const [draftFilters, setDraftFilters] = useState(filters);
-  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.minPrice}|${filters.maxPrice}`;
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [dropoffDate, setDropoffDate] = useState("");
+  const [dropoffTime, setDropoffTime] = useState("");
+  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.minPrice}|${filters.maxPrice}|${filters.pickupDateTime}|${filters.dropoffDateTime}`;
   useEffect(() => {
     setDraftFilters(filters);
+    const nextPickup = splitDateTime(filters.pickupDateTime);
+    const nextDropoff = splitDateTime(filters.dropoffDateTime);
+    setPickupDate(nextPickup.date);
+    setPickupTime(nextPickup.time);
+    setDropoffDate(nextDropoff.date);
+    setDropoffTime(nextDropoff.time);
   }, [filterKey]);
   const {
     engineType: draftEngineType,
@@ -66,7 +84,14 @@ export default function Sidebar() {
     }));
   };
   const handleApplyFilters = () => {
-    setFilters(draftFilters);
+    const nextFilters = { ...draftFilters };
+    const pickupDateTime =
+      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
+    const dropoffDateTime =
+      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
+    nextFilters.pickupDateTime = pickupDateTime;
+    nextFilters.dropoffDateTime = dropoffDateTime;
+    setFilters(nextFilters);
   };
   return (
     <div className="wrap-fixed-sidebar">
@@ -86,6 +111,68 @@ export default function Sidebar() {
         <div className="inventory-sidebar">
           <div className="inventroy-widget widget-location">
             <div className="row">
+              <div className="col-lg-12">
+                <div className="price-box">
+                  <form
+                    onSubmit={(event) => event.preventDefault()}
+                    className="row g-0"
+                  >
+                    <div className="form-column col-lg-6">
+                      <div className="form_boxes">
+                        <label>{t("Pickup date")}</label>
+                        <input
+                          type="date"
+                          value={pickupDate}
+                          onChange={(event) => setPickupDate(event.target.value)}
+                          placeholder={t("Pickup date")}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-column v2 col-lg-6">
+                      <div className="form_boxes">
+                        <label>{t("Pickup time")}</label>
+                        <input
+                          type="time"
+                          value={pickupTime}
+                          onChange={(event) => setPickupTime(event.target.value)}
+                          placeholder={t("Pickup time")}
+                        />
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div className="col-lg-12">
+                <div className="price-box">
+                  <form
+                    onSubmit={(event) => event.preventDefault()}
+                    className="row g-0"
+                  >
+                    <div className="form-column col-lg-6">
+                      <div className="form_boxes">
+                        <label>{t("Drop-off date")}</label>
+                        <input
+                          type="date"
+                          value={dropoffDate}
+                          onChange={(event) => setDropoffDate(event.target.value)}
+                          placeholder={t("Drop-off date")}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-column v2 col-lg-6">
+                      <div className="form_boxes">
+                        <label>{t("Drop-off time")}</label>
+                        <input
+                          type="time"
+                          value={dropoffTime}
+                          onChange={(event) => setDropoffTime(event.target.value)}
+                          placeholder={t("Drop-off time")}
+                        />
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
               <div className="col-lg-12">
                 <div className="form_boxes">
                   <label>{t("Engine Type")}</label>

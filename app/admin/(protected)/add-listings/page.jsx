@@ -11,7 +11,7 @@ export const metadata = {
 export default function AddListingsPage() {
   return (
     <>
-      <div style={{ background: "var(--theme-color-dark)" }}>
+      <div className="admin-shell">
         <HeaderDashboard />
 
         <AddListings />

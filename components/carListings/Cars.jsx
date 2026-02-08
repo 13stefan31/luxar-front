@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
+import Slider from "react-slick";
 import Image from "next/image";
 import SelectComponent from "../common/SelectComponent";
 import Link from "@/components/common/LocalizedLink";
@@ -7,12 +8,34 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useCarFilters } from "./useCarFilters";
 import { getBadgeColor, getRandomBadges } from "@/lib/carBadges";
 import { getCarDetailHref } from "@/lib/carPaths";
-import { getInventoryApiHeaders, INVENTORY_API_ROOT } from "@/lib/inventoryApi";
+import {
+  getInventoryApiHeaders,
+  INVENTORY_API_ROOT,
+  normalizeInventoryImageUrl,
+} from "@/lib/inventoryApi";
 import PriceWithInfo from "@/components/common/PriceWithInfo";
+
+const splitDateTime = (value) => {
+  if (!value) {
+    return { date: "", time: "" };
+  }
+  const [date, time] = String(value).split("T");
+  return { date: date || "", time: time || "" };
+};
 
 const API_URL = `${INVENTORY_API_ROOT}/cars`;
 const FALLBACK_IMAGE = "/images/car.webp";
 const DEFAULT_PRICE = 50;
+const VARIANT_SLIDER_SETTINGS = {
+  arrows: true,
+  dots: false,
+  infinite: false,
+  slidesToShow: 1,
+  slidesToScroll: 1,
+  adaptiveHeight: true,
+  speed: 400,
+  swipeToSlide: true,
+};
 const FUEL_LABELS = {
   D: "Diesel",
   B: "Petrol",
@@ -148,7 +171,8 @@ const mapCars = (items, pageToLoad, perPage, t) => {
     const imageUrl = Array.isArray(car.images)
       ? car.images.find((image) => image?.path)?.path
       : null;
-    const imgSrc = imageUrl || car.image || car.image_url || FALLBACK_IMAGE;
+    const rawImage = imageUrl || car.image || car.image_url || FALLBACK_IMAGE;
+    const imgSrc = normalizeInventoryImageUrl(rawImage, FALLBACK_IMAGE);
     const rawInstances = car.carInstances || car.instances;
     const variants = Array.isArray(rawInstances)
       ? rawInstances.map((instance) => {
@@ -159,9 +183,13 @@ const mapCars = (items, pageToLoad, perPage, t) => {
             instance.image ||
             instance.image_url ||
             imgSrc;
+          const normalizedInstanceImage = normalizeInventoryImageUrl(
+            instanceImageUrl,
+            imgSrc
+          );
           return {
             uuid: instance.uuid,
-            image: instanceImageUrl,
+            image: normalizedInstanceImage,
             additionalEquipment: formatAdditionalEquipment(
               instance.additional_equipment ?? instance.additionalEquipment,
               t
@@ -219,6 +247,10 @@ export default function Cars() {
   const { t } = useLanguage();
   const { filters, setFilters } = useCarFilters();
   const [draftFilters, setDraftFilters] = useState(filters);
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  const [dropoffDate, setDropoffDate] = useState("");
+  const [dropoffTime, setDropoffTime] = useState("");
   const {
     engineType,
     transmissionType,
@@ -226,6 +258,8 @@ export default function Cars() {
     manufactureYear,
     minPrice,
     maxPrice,
+    pickupDateTime,
+    dropoffDateTime,
   } = filters;
   const {
     engineType: draftEngineType,
@@ -276,9 +310,15 @@ export default function Cars() {
     ],
     [t]
   );
-  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${minPrice}|${maxPrice}`;
+  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${minPrice}|${maxPrice}|${pickupDateTime}|${dropoffDateTime}`;
   useEffect(() => {
     setDraftFilters(filters);
+    const nextPickup = splitDateTime(pickupDateTime);
+    const nextDropoff = splitDateTime(dropoffDateTime);
+    setPickupDate(nextPickup.date);
+    setPickupTime(nextPickup.time);
+    setDropoffDate(nextDropoff.date);
+    setDropoffTime(nextDropoff.time);
   }, [filterKey]);
   const handleFilterChange = (key) => (value) => {
     setDraftFilters((prev) => ({ ...prev, [key]: value }));
@@ -296,7 +336,14 @@ export default function Cars() {
     }));
   };
   const handleApplyFilters = () => {
-    setFilters(draftFilters);
+    const nextFilters = { ...draftFilters };
+    const nextPickupDateTime =
+      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
+    const nextDropoffDateTime =
+      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
+    nextFilters.pickupDateTime = nextPickupDateTime;
+    nextFilters.dropoffDateTime = nextDropoffDateTime;
+    setFilters(nextFilters);
   };
 
   useEffect(() => {
@@ -360,6 +407,12 @@ export default function Cars() {
         }
         if (maxPrice) {
           queryParams.set("maxPrice", maxPrice);
+        }
+        if (pickupDateTime) {
+          queryParams.set("pickupDateTime", pickupDateTime);
+        }
+        if (dropoffDateTime) {
+          queryParams.set("dropoffDateTime", dropoffDateTime);
         }
         const response = await fetch(`${API_URL}?${queryParams.toString()}`, {
           headers: getInventoryApiHeaders(),
@@ -425,6 +478,8 @@ export default function Cars() {
     manufactureYear,
     minPrice,
     maxPrice,
+    pickupDateTime,
+    dropoffDateTime,
   ]);
 
   const minPriceValue =
@@ -483,7 +538,7 @@ export default function Cars() {
   };
 
   return (
-    <section className="cars-section-four v1 v2 layout-radius">
+    <section className="cars-section-four v1 v2 layout-radius cars-section-white">
       <div className="boxcar-container">
         <div className="boxcar-title-three wow fadeInUp">
           <ul className="breadcrumb">
@@ -523,6 +578,76 @@ export default function Cars() {
             <div className="inventory-sidebar">
               <div className="inventroy-widget widget-location">
                 <div className="row">
+                  <div className="col-lg-12">
+                    <div className="price-box">
+                      <form
+                        onSubmit={(event) => event.preventDefault()}
+                        className="row g-0"
+                      >
+                        <div className="form-column col-lg-6">
+                          <div className="form_boxes">
+                            <label>{t("Pickup date")}</label>
+                            <input
+                              type="date"
+                              value={pickupDate}
+                              onChange={(event) =>
+                                setPickupDate(event.target.value)
+                              }
+                              placeholder={t("Pickup date")}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-column v2 col-lg-6">
+                          <div className="form_boxes">
+                            <label>{t("Pickup time")}</label>
+                            <input
+                              type="time"
+                              value={pickupTime}
+                              onChange={(event) =>
+                                setPickupTime(event.target.value)
+                              }
+                              placeholder={t("Pickup time")}
+                            />
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                  <div className="col-lg-12">
+                    <div className="price-box">
+                      <form
+                        onSubmit={(event) => event.preventDefault()}
+                        className="row g-0"
+                      >
+                        <div className="form-column col-lg-6">
+                          <div className="form_boxes">
+                            <label>{t("Drop-off date")}</label>
+                            <input
+                              type="date"
+                              value={dropoffDate}
+                              onChange={(event) =>
+                                setDropoffDate(event.target.value)
+                              }
+                              placeholder={t("Drop-off date")}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-column v2 col-lg-6">
+                          <div className="form_boxes">
+                            <label>{t("Drop-off time")}</label>
+                            <input
+                              type="time"
+                              value={dropoffTime}
+                              onChange={(event) =>
+                                setDropoffTime(event.target.value)
+                              }
+                              placeholder={t("Drop-off time")}
+                            />
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
                   <div className="col-lg-12">
                     <div className="form_boxes">
                       <label>{t("Engine Type")}</label>
@@ -676,6 +801,85 @@ export default function Cars() {
                     ? expandedCar.priceValue
                     : 0;
                 const showPrice = basePriceValue > 0;
+                const renderVariantCard = (variant, index) => {
+                  const isBase = index === 0;
+                  const equipment = variant.equipment || [];
+                  const differenceItems = equipment.filter(
+                    (item) => !baseEquipmentSet.has(item)
+                  );
+                  const visibleDifferences = isBase
+                    ? [t("Standard equipment")]
+                    : differenceItems.length
+                      ? differenceItems
+                      : [t("Additional equipment not listed")];
+                  const priceStep = 5;
+                  const variantPriceValue =
+                    showPrice && !isBase
+                      ? basePriceValue + differenceItems.length * priceStep
+                      : basePriceValue;
+                  const priceLabel = showPrice
+                    ? variantPriceValue
+                    : DEFAULT_PRICE;
+                  const imageSrc =
+                    variant.image ||
+                    expandedCar.images?.[0] ||
+                    FALLBACK_IMAGE;
+                  const imageAlt = `${expandedCar.title || t("Variant")} ${
+                    index + 1
+                  }`;
+                  return (
+                    <Link
+                      key={
+                        variant.uuid || `${expandedCar.id}-${variant.index}`
+                      }
+                      href={{
+                        pathname: getCarDetailHref(expandedCar),
+                        query: { instance: variant.uuid },
+                      }}
+                      className={`variant-card${
+                        isBase ? " is-base" : " is-upgrade"
+                      }`}
+                      aria-selected={isBase ? "true" : "false"}
+                    >
+                      <div className="variant-card-media">
+                        <Image
+                          src={imageSrc}
+                          alt={imageAlt}
+                          fill
+                          sizes="(max-width: 767px) 100vw, 200px"
+                          className="variant-card-image"
+                        />
+                      </div>
+                      <div className="variant-card-body">
+                        <div className="variant-price">
+                          <PriceWithInfo
+                            value={priceLabel}
+                            fallback={DEFAULT_PRICE}
+                          />
+                        </div>
+                        <div className="variant-diff-label">
+                          {isBase
+                            ? t("Standard")
+                            : t("Includes additional")}
+                        </div>
+                        <ul className="variant-diffs">
+                          {visibleDifferences.map((item, itemIndex) => (
+                            <li key={`${variant.index}-diff-${itemIndex}`}>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="variant-footer">
+                          <span className="variant-cta">{t("Details")}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                };
+                const variantSliderSettings = {
+                  ...VARIANT_SLIDER_SETTINGS,
+                  arrows: orderedVariants.length > 1,
+                };
                 return (
                   <div
                     key={`group-${groupIndex}`}
@@ -858,92 +1062,17 @@ export default function Cars() {
                       >
                         <div className="variant-panel">
                           <div className="variant-title">
-                            <span>{t("Variants for")} {expandedCar.title}</span>
+                            <span>
+                              {t("Variants for")} {expandedCar.title}
+                            </span>
                           </div>
                           <div className="variant-items">
-                            {orderedVariants.map((variant, index) => {
-                              const isBase = index === 0;
-                              const equipment = variant.equipment || [];
-                              const differenceItems = equipment.filter(
-                                (item) => !baseEquipmentSet.has(item)
-                              );
-                              const visibleDifferences = isBase
-                                ? [t("Standard equipment")]
-                                : differenceItems.length
-                                  ? differenceItems
-                                  : [t("Additional equipment not listed")];
-                              const priceStep = 5;
-                              const variantPriceValue =
-                                showPrice && !isBase
-                                  ? basePriceValue +
-                                    differenceItems.length * priceStep
-                                  : basePriceValue;
-                              const priceLabel = showPrice
-                                ? variantPriceValue
-                                : DEFAULT_PRICE;
-                              const imageSrc =
-                                variant.image ||
-                                expandedCar.images?.[0] ||
-                                FALLBACK_IMAGE;
-                              const imageAlt = `${expandedCar.title || t("Variant")} ${
-                                index + 1
-                              }`;
-                              return (
-                                <Link
-                                  key={
-                                    variant.uuid ||
-                                    `${expandedCar.id}-${variant.index}`
-                                  }
-                                  href={{
-                                    pathname: getCarDetailHref(expandedCar),
-                                    query: { instance: variant.uuid },
-                                  }}
-                                  className={`variant-card${
-                                    isBase ? " is-base" : " is-upgrade"
-                                  }`}
-                                  aria-selected={isBase ? "true" : "false"}
-                                >
-                                  <div className="variant-card-media">
-                                    <Image
-                                      src={imageSrc}
-                                      alt={imageAlt}
-                                      fill
-                                      sizes="(max-width: 767px) 100vw, 200px"
-                                      className="variant-card-image"
-                                    />
-                                  </div>
-                                  <div className="variant-card-body">
-                                    <div className="variant-price">
-                                      <PriceWithInfo
-                                        value={priceLabel}
-                                        fallback={DEFAULT_PRICE}
-                                      />
-                                    </div>
-                                    <div className="variant-diff-label">
-                                      {isBase
-                                        ? t("Standard")
-                                        : t("Includes additional")}
-                                    </div>
-                                    <ul className="variant-diffs">
-                                      {visibleDifferences.map(
-                                        (item, itemIndex) => (
-                                          <li
-                                            key={`${variant.index}-diff-${itemIndex}`}
-                                          >
-                                            {item}
-                                          </li>
-                                        )
-                                      )}
-                                    </ul>
-                                    <div className="variant-footer">
-                                      <span className="variant-cta">
-                                        {t("Details")}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </Link>
-                              );
-                            })}
+                            {orderedVariants.map(renderVariantCard)}
+                          </div>
+                          <div className="variant-items-slider">
+                            <Slider {...variantSliderSettings}>
+                              {orderedVariants.map(renderVariantCard)}
+                            </Slider>
                           </div>
                         </div>
                       </div>

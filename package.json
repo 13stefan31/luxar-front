@@ -21,6 +21,7 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18",
     "react-hot-toast": "^2.6.0",
+    "lucide-react": "^0.452.0",
     "react-modal-video": "^2.0.2",
     "react-photoswipe-gallery": "^3.0.2",
     "react-slick": "^0.30.2",

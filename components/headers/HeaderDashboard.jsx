@@ -2,13 +2,14 @@
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { adminLogout } from "@/lib/adminApi";
 
 export default function HeaderDashboard() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    const response = await fetch("/api/admin/logout", { method: "POST" });
-    if (response.ok) {
+    const success = await adminLogout();
+    if (success) {
       toast.success("Uspješno ste se odjavili.");
     } else {
       toast.error("Greška prilikom odjave.");
@@ -25,10 +26,10 @@ export default function HeaderDashboard() {
               <div className="logo">
                 <Image
                   alt=""
-                  title="Boxcar"
+                  title="Luxar rent a car"
                   width={108}
                   height={26}
-                  src="/images/logo.svg"
+                  src="/images/logo.png"
                 />
               </div>
             </div>

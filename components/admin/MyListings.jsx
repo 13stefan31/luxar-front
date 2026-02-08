@@ -6,6 +6,10 @@ import Sidebar from "./Sidebar";
 import Image from "next/image";
 import Pagination from "../common/Pagination";
 import { adminGetCars, adminLogout } from "@/lib/adminApi";
+import {
+  INVENTORY_API_ORIGIN,
+  normalizeInventoryImageUrl,
+} from "@/lib/inventoryApi";
 
 const formatEngineLabel = (power, capacity, type) => {
   const parts = [];
@@ -48,6 +52,70 @@ const fuelDisplayName = (code) => {
     return "—";
   }
   return mapping[String(code).toUpperCase()] ?? code;
+};
+
+const resolveImagePath = (image) => {
+  if (!image) {
+    return "";
+  }
+  if (typeof image === "string") {
+    return image;
+  }
+  if (typeof image === "object") {
+    return image.path || image.url || image.image || image.src || "";
+  }
+  return "";
+};
+
+const resolveRemoteImagePath = (image) => {
+  const raw = resolveImagePath(image);
+  if (!raw) {
+    return "";
+  }
+  const normalized = normalizeInventoryImageUrl(raw, "");
+  if (
+    normalized &&
+    /^\/?uploads\//i.test(normalized) &&
+    INVENTORY_API_ORIGIN
+  ) {
+    const trimmed = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${INVENTORY_API_ORIGIN}${trimmed}`;
+  }
+  return normalized || raw;
+};
+
+const resolveCoverImage = (generatedImages = []) => {
+  if (!Array.isArray(generatedImages)) {
+    return null;
+  }
+  return (
+    generatedImages.find((img) =>
+      ["c", "cover", "main"].includes(String(img?.type || "").toLowerCase())
+    ) || null
+  );
+};
+
+const resolveCarCoverImage = (car) => {
+  const generatedImages = Array.isArray(car?.generatedImages)
+    ? car.generatedImages
+    : [];
+  const coverGenerated = resolveCoverImage(generatedImages);
+  const candidates = [
+    coverGenerated,
+    car?.coverImage,
+    car?.cover,
+    car?.image,
+    car?.image_url,
+    car?.imageUrl,
+    ...(Array.isArray(car?.images) ? car.images : []),
+  ];
+  for (const candidate of candidates) {
+    const resolved = resolveRemoteImagePath(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+  return "";
 };
 
 const normalizeInstances = (instances) => {
@@ -103,7 +171,7 @@ const buildSecondaryMeta = (car) => {
 };
 
 const toTableRow = (car) => {
-  const image = car?.image || car?.images?.[0] || null;
+  const image = resolveCarCoverImage(car) || null;
   const instances = normalizeInstances(car?.instances || car?.instancesList);
   return {
     id: car?.id ?? car?.uuid ?? car?.vehicleName ?? car?.alias,

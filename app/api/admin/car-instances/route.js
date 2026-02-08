@@ -32,8 +32,13 @@ export async function POST(request) {
   const cookieToken = request.cookies.get("admin_token")?.value;
   const token = authHeader || (cookieToken ? `Bearer ${cookieToken}` : null);
 
-  const body = await request.text();
-  const headers = { "Content-Type": "application/json" };
+  const contentType = request.headers.get("content-type") || "";
+  const isMultipart = contentType.toLowerCase().includes("multipart/form-data");
+  const body = isMultipart ? await request.formData() : await request.text();
+  const headers = {};
+  if (!isMultipart) {
+    headers["Content-Type"] = contentType || "application/json";
+  }
   if (token) {
     headers.Authorization = token;
   }

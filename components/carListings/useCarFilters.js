@@ -10,6 +10,8 @@ const FILTER_KEYS = [
   "manufactureYear",
   "minPrice",
   "maxPrice",
+  "pickupDateTime",
+  "dropoffDateTime",
 ];
 
 const getFilterValue = (searchParams, key) => {
@@ -33,6 +35,8 @@ export function useCarFilters() {
       manufactureYear: getFilterValue(searchParams, "manufactureYear"),
       minPrice: getFilterValue(searchParams, "minPrice"),
       maxPrice: getFilterValue(searchParams, "maxPrice"),
+      pickupDateTime: getFilterValue(searchParams, "pickupDateTime"),
+      dropoffDateTime: getFilterValue(searchParams, "dropoffDateTime"),
     }),
     [searchParams]
   );
