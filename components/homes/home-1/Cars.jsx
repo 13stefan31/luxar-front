@@ -148,6 +148,7 @@ const buildDescription = (car, t) => {
 export default function Cars() {
   const [sortedItems, setSortedItems] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const sliderRef = useRef(null);
   const sliderAreaRef = useRef(null);
   const variantPanelRef = useRef(null);
   const { t } = useLanguage();
@@ -248,6 +249,21 @@ export default function Cars() {
     fetchCars();
   }, [t]);
 
+  useEffect(() => {
+    if (!sortedItems.length) {
+      return;
+    }
+    const rafId = requestAnimationFrame(() => {
+      if (sliderRef.current?.innerSlider?.onWindowResized) {
+        sliderRef.current.innerSlider.onWindowResized();
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("resize"));
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [sortedItems.length]);
 
   const options = {
     infinite: false,
@@ -419,7 +435,12 @@ export default function Cars() {
           }`}
           ref={sliderAreaRef}
         >
-          <Slider {...options} className="row car-slider-three slider-layout-1">
+          <Slider
+            key={`home-recommended-${displayedCars.length}`}
+            ref={sliderRef}
+            {...options}
+            className="car-slider-three"
+          >
             {displayedCars.map((car) => {
               const variantCount = car.variants ? car.variants.length : 0;
               const hasVariants = variantCount > 1;
@@ -429,7 +450,7 @@ export default function Cars() {
               return (
                 <div
                   key={car.id}
-                  className={`box-car car-block-three col-lg-3 col-md-6 col-sm-12${
+                  className={`box-car car-block-three${
                     isExpanded ? " is-expanded" : ""
                   }`}
                 >

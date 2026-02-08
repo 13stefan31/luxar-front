@@ -14,9 +14,11 @@ const LOCATION_OPTIONS = ["Podgorica", "Budva", "Bar", "Tivat", "Niksic"];
 export default function Single1({ carItem }) {
   const [selectedLocation, setSelectedLocation] = useState(LOCATION_OPTIONS[0]);
   const [pickupLocation, setPickupLocation] = useState("");
-  const [pickupDateTime, setPickupDateTime] = useState("");
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
   const [dropoffLocation, setDropoffLocation] = useState("");
-  const [dropoffDateTime, setDropoffDateTime] = useState("");
+  const [dropoffDate, setDropoffDate] = useState("");
+  const [dropoffTime, setDropoffTime] = useState("");
   const [message, setMessage] = useState("");
   const { t } = useLanguage();
   const detail = carItem?.raw || {};
@@ -27,6 +29,7 @@ export default function Single1({ carItem }) {
     ? galleryImages
     : ["/images/car.webp"];
   const showThumbs = sliderImages.length > 1;
+  const showArrows = sliderImages.length > 1;
   const thumbSlidesToShow = Math.min(6, sliderImages.length);
   const thumbSlidesMd = Math.min(5, sliderImages.length);
   const thumbSlidesSm = Math.min(4, sliderImages.length);
@@ -46,9 +49,11 @@ export default function Single1({ carItem }) {
     console.log({
       selectedLocation,
       pickupLocation,
-      pickupDateTime,
+      pickupDate,
+      pickupTime,
       dropoffLocation,
-      dropoffDateTime,
+      dropoffDate,
+      dropoffTime,
       message,
     });
   };
@@ -83,7 +88,7 @@ export default function Single1({ carItem }) {
                             className="gallery-main-slider"
                             asNavFor={navThumbs}
                             ref={mainSliderRef}
-                            arrows
+                            arrows={showArrows}
                             dots={false}
                             infinite={false}
                             slidesToShow={1}
@@ -221,17 +226,30 @@ export default function Single1({ carItem }) {
                           value={pickupLocation}
                           onChange={(event) => setPickupLocation(event.target.value)}
                         />
-                        <label htmlFor="pickupDateTime">
-                          {t("Pick-up date and time")}
-                        </label>
-                        <input
-                          id="pickupDateTime"
-                          type="datetime-local"
-                          value={pickupDateTime}
-                          onChange={(event) =>
-                            setPickupDateTime(event.target.value)
-                          }
-                        />
+                        <div className="reservation-row">
+                          <div className="reservation-field">
+                            <label htmlFor="pickupDate">{t("Pickup date")}</label>
+                            <input
+                              id="pickupDate"
+                              type="date"
+                              value={pickupDate}
+                              onChange={(event) =>
+                                setPickupDate(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="reservation-field">
+                            <label htmlFor="pickupTime">{t("Pickup time")}</label>
+                            <input
+                              id="pickupTime"
+                              type="time"
+                              value={pickupTime}
+                              onChange={(event) =>
+                                setPickupTime(event.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
                         <label htmlFor="dropoffLocation">
                           {t("Drop-off location")}
                         </label>
@@ -244,17 +262,30 @@ export default function Single1({ carItem }) {
                             setDropoffLocation(event.target.value)
                           }
                         />
-                        <label htmlFor="dropoffDateTime">
-                          {t("Drop-off date and time")}
-                        </label>
-                        <input
-                          id="dropoffDateTime"
-                          type="datetime-local"
-                          value={dropoffDateTime}
-                          onChange={(event) =>
-                            setDropoffDateTime(event.target.value)
-                          }
-                        />
+                        <div className="reservation-row">
+                          <div className="reservation-field">
+                            <label htmlFor="dropoffDate">{t("Drop-off date")}</label>
+                            <input
+                              id="dropoffDate"
+                              type="date"
+                              value={dropoffDate}
+                              onChange={(event) =>
+                                setDropoffDate(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="reservation-field">
+                            <label htmlFor="dropoffTime">{t("Drop-off time")}</label>
+                            <input
+                              id="dropoffTime"
+                              type="time"
+                              value={dropoffTime}
+                              onChange={(event) =>
+                                setDropoffTime(event.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
                         <label htmlFor="message">{t("Message")}</label>
                         <textarea
                           id="message"

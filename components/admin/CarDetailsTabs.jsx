@@ -95,6 +95,30 @@ const getStatusTone = (status = "") => {
   return "status-pill__default";
 };
 
+const coerceBooleanValue = (value) => {
+  if (value === true || value === false) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+  }
+  return null;
+};
+
+const toggleBooleanLike = (value) => {
+  const coerced = coerceBooleanValue(value);
+  if (coerced === null) {
+    return !value;
+  }
+  return !coerced;
+};
+
 const resolveImagePath = (image) => {
   if (!image) {
     return "";
@@ -608,7 +632,7 @@ export default function CarDetailsTabs({ carId }) {
   const handleVehicleEquipmentToggle = (key) => {
     setFormValues((prev) => {
       const equipment = { ...(prev.equipment || {}) };
-      equipment[key] = !equipment[key];
+      equipment[key] = toggleBooleanLike(equipment[key]);
       return { ...prev, equipment };
     });
   };
@@ -1481,7 +1505,7 @@ export default function CarDetailsTabs({ carId }) {
     const existing = instanceEdits[variationKey] || {};
     const equipment = {
       ...existing.additionalEquipment,
-      [key]: !existing.additionalEquipment?.[key],
+      [key]: toggleBooleanLike(existing.additionalEquipment?.[key]),
     };
     setInstanceEdits((prev) => ({
       ...prev,
@@ -2035,9 +2059,10 @@ export default function CarDetailsTabs({ carId }) {
                     <div className="equipment-grid">
                       {equipmentEntries.length ? (
                         equipmentEntries.map(([key, value]) => {
+                          const booleanValue = coerceBooleanValue(value);
                           const isTextValue =
                             typeof value === "string" || typeof value === "number";
-                          if (isTextValue) {
+                          if (isTextValue && booleanValue === null) {
                             return (
                               <label key={key} className="equipment-input">
                                 <span>{key}</span>
@@ -2058,7 +2083,11 @@ export default function CarDetailsTabs({ carId }) {
                             <label key={key} className="equipment-toggle">
                               <input
                                 type="checkbox"
-                                checked={Boolean(value)}
+                                checked={
+                                  booleanValue === null
+                                    ? Boolean(value)
+                                    : booleanValue
+                                }
                                 onChange={() => handleVehicleEquipmentToggle(key)}
                               />
                               <span>{key}</span>
@@ -2385,10 +2414,11 @@ export default function CarDetailsTabs({ carId }) {
                             <div className="equipment-grid">
                               {equipmentEntries.length ? (
                                 equipmentEntries.map(([key, value]) => {
+                                  const booleanValue = coerceBooleanValue(value);
                                   const isTextValue =
                                     typeof value === "string" ||
                                     typeof value === "number";
-                                  if (isTextValue) {
+                                  if (isTextValue && booleanValue === null) {
                                     return (
                                       <label
                                         key={key}
@@ -2416,7 +2446,11 @@ export default function CarDetailsTabs({ carId }) {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={Boolean(value)}
+                                        checked={
+                                          booleanValue === null
+                                            ? Boolean(value)
+                                            : booleanValue
+                                        }
                                         onChange={() =>
                                           handleInstanceToggle(variationKey, key)
                                         }

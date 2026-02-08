@@ -4,6 +4,22 @@
 .slick-slider.slider-thumb .slick-slide > div {
   margin: 0 0 !important;
 }
+
+.cars-section-three .car-slider-three .slick-slide > div {
+  margin-right: 0 !important;
+}
+
+.cars-section-three .car-slider-three .slick-slide {
+  padding: 0 14px;
+  box-sizing: border-box;
+}
+@media (max-width: 1400px) {
+  .slider-layout-1 {
+    width: 100%;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
 .car-block-three {
   margin: 0 0 !important;
 }
@@ -180,6 +196,38 @@
   .gallery-thumb-image {
   border-color: var(--theme-color1);
   box-shadow: 0 0 0 2px rgba(5, 11, 32, 0.2);
+}
+
+.inventory-section .gallery-sec .slick-prev,
+.inventory-section .gallery-sec .slick-next {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(251, 247, 238, 0.92);
+  border: 1px solid rgba(201, 162, 78, 0.55);
+  box-shadow: 0 12px 24px rgba(17, 17, 17, 0.16);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.inventory-section .gallery-sec .slick-prev::before,
+.inventory-section .gallery-sec .slick-next::before {
+  color: var(--brand-black);
+  font-size: 18px;
+}
+
+.inventory-section .gallery-sec .slick-prev:hover,
+.inventory-section .gallery-sec .slick-next:hover {
+  background: var(--brand-black);
+  border-color: var(--brand-black);
+  transform: translateY(-1px);
+}
+
+.inventory-section .gallery-sec .slick-prev:hover::before,
+.inventory-section .gallery-sec .slick-next:hover::before {
+  color: var(--brand-gold);
 }
 
 @media (max-width: 991px) {
@@ -470,6 +518,59 @@
 .cars-section-three .car-slider-three .slick-list {
   overflow-x: hidden;
   overflow-y: visible;
+  margin: 0 -14px;
+}
+
+.cars-section-three {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.cars-section-three .car-slider-three .slick-prev,
+.cars-section-three .car-slider-three .slick-next {
+  top: auto;
+  bottom: -52px;
+  left: auto;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--theme-color1);
+  background: var(--theme-color-light);
+  color: var(--theme-color1);
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cars-section-three .car-slider-three .slick-prev {
+  right: 64px;
+}
+
+.cars-section-three .car-slider-three .slick-prev::before,
+.cars-section-three .car-slider-three .slick-next::before {
+  color: currentColor;
+  font-size: 16px;
+  opacity: 1;
+}
+
+.cars-section-three .car-slider-three .slick-prev:hover,
+.cars-section-three .car-slider-three .slick-next:hover {
+  background: var(--theme-color1);
+  border-color: var(--theme-color1);
+  color: var(--theme-color-light);
+  box-shadow: 0 8px 18px rgba(5, 11, 32, 0.18);
+}
+
+.cars-section-three .car-slider-three .slick-prev:focus-visible,
+.cars-section-three .car-slider-three .slick-next:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(201, 162, 78, 0.35);
 }
 
 .home-slider-area.has-variants-open {
@@ -1018,9 +1119,18 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1.1;
-  color: #fff;
+  color: var(--brand-black);
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.28),
+    rgba(17, 17, 17, 0.12)
+  );
+  background-blend-mode: soft-light;
+  border: 1px solid rgba(201, 162, 78, 0.28);
+  box-shadow:
+    0 4px 10px rgba(17, 17, 17, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .car-block-three .inner-box .image-box .car-badges .car-badge i,
@@ -1028,6 +1138,7 @@
 .car-block-two .inner-box .image-box .car-badges .car-badge i {
   font-size: 12px;
   line-height: 1;
+  color: inherit;
 }
 
 @media (max-width: 1200px) {
@@ -1302,21 +1413,18 @@
   }
 }
 
-.inventory-section .side-bar-column {
-  display: flex;
-}
-
-.inventory-section .side-bar-column .inner-column {
-  display: flex;
-  flex-direction: column;
-}
-
 .inventory-section .side-bar-column .sticky-reservation {
   position: -webkit-sticky;
   position: sticky;
   top: 30px;
-  align-self: stretch;
+  align-self: flex-start;
+  height: fit-content;
   z-index: 2;
+}
+
+.inventory-section .side-bar-column,
+.inventory-section .side-bar-column .inner-column {
+  overflow: visible;
 }
 
 @media (max-width: 991px) {
@@ -2601,6 +2709,11 @@
 
 body {
   background-color: #fff;
+  overflow-x: hidden;
+}
+
+.boxcar-wrapper {
+  overflow: visible !important;
 }
 
 a {
@@ -3255,4 +3368,31 @@ a:hover {
   background: var(--theme-color-dark) !important;
   border-color: var(--theme-color-dark) !important;
   color: var(--theme-color-light) !important;
+}
+
+.inventory-section .side-bar-column .reservation-box .reservation-form .reservation-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-row
+  .reservation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 575px) {
+  .inventory-section
+    .side-bar-column
+    .reservation-box
+    .reservation-form
+    .reservation-row {
+    grid-template-columns: 1fr;
+  }
 }
