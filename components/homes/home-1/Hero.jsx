@@ -81,12 +81,15 @@ export default function Hero() {
     <section className="boxcar-banner-section-v1">
       <div className="container">
         <div className="banner-content">
-          <span className="wow fadeInUp">
-            {t("Rent a car quickly and easily")}
-          </span>
-          <h2 className="wow fadeInUp" data-wow-delay="100ms">
-            {t("Find the perfect rental car")}
+          <h1 className="hero-title wow fadeInUp" data-wow-delay="100ms">
+            {t("Welcome to Luxar Rent a Car - Leading Car Rental in Montenegro")}
+          </h1>
+          <h2 className="hero-subtitle wow fadeInUp" data-wow-delay="200ms">
+            {t("Rent a Car. Explore Montenegro. Discover places buses never reach.")}
           </h2>
+          <p className="hero-cta wow fadeInUp" data-wow-delay="300ms">
+            {t("Montenegro starts when you turn the key!")}
+          </p>
 
 
           {/*

@@ -34,7 +34,7 @@ export default function Features2() {
                 <BadgePercent {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Special rental offers")}</h6>
+                <h3 className="title">{t("Special rental offers")}</h3>
                 <div className="text">
                   {t(
                     "We offer flexible rental packages and special deals tailored to your budget and needs."
@@ -50,7 +50,7 @@ export default function Features2() {
                 <ShieldCheck {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Reliable service")}</h6>
+                <h3 className="title">{t("Reliable service")}</h3>
                 <div className="text">
                   {t(
                     "With thousands of satisfied customers, we guarantee full transparency and reliability with every rental."
@@ -66,7 +66,7 @@ export default function Features2() {
                 <Receipt {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Transparent pricing")}</h6>
+                <h3 className="title">{t("Transparent pricing")}</h3>
                 <div className="text">
                   {t(
                     "No hidden costs — you know the total rental price upfront and everything included."
@@ -82,9 +82,9 @@ export default function Features2() {
                 <Car {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">
+                <h3 className="title">
                   {t("Professionally maintained vehicles")}
-                </h6>
+                </h3>
                 <div className="text">
                   {t(
                     "Our vehicles undergo regular servicing and strict inspections so you can travel safely and worry-free."
@@ -102,7 +102,7 @@ export default function Features2() {
                 <MapPin {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Country-Wide Delivery")}</h6>
+                <h3 className="title">{t("Country-Wide Delivery")}</h3>
                 <div className="text">
                   {t(
                     "Rent a car from anywhere in Montenegro, and we will deliver it to you, so your trip starts exactly where you need it."
@@ -118,7 +118,7 @@ export default function Features2() {
                 <Plane {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Airport Pickup & Drop-off")}</h6>
+                <h3 className="title">{t("Airport Pickup & Drop-off")}</h3>
                 <div className="text">
                   {t(
                     "Your rental is ready when you land, with fast pickup and easy return."
@@ -134,7 +134,7 @@ export default function Features2() {
                 <Mountain {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Perfect for Mountains & Coast")}</h6>
+                <h3 className="title">{t("Perfect for Mountains & Coast")}</h3>
                 <div className="text">
                   {t(
                     "Our vehicles let you explore coastal roads, mountain views, and every scenic route in between."
@@ -150,7 +150,7 @@ export default function Features2() {
                 <Users {...iconProps} />
               </div>
               <div className="content-box">
-                <h6 className="title">{t("Local Experts, Not a Chain")}</h6>
+                <h3 className="title">{t("Local Experts, Not a Chain")}</h3>
                 <div className="text">
                   {t(
                     "We're family owned car rental in Montenegro who knows the roads, routes, and real Montenegro."

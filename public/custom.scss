@@ -3054,6 +3054,49 @@ a:hover {
   color: var(--brand-gold) !important;
 }
 
+/* Hero copy update */
+.boxcar-banner-section-v1 .banner-content .hero-title {
+  color: #fff;
+  font-size: 62px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 18px;
+}
+
+.boxcar-banner-section-v1 .banner-content .hero-subtitle {
+  color: #fff;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.boxcar-banner-section-v1 .banner-content .hero-cta {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 38px;
+}
+
+@media (max-width: 767px) {
+  .boxcar-banner-section-v1 .banner-content .hero-title {
+    font-size: 40px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+
+  .boxcar-banner-section-v1 .banner-content .hero-subtitle {
+    font-size: 20px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+
+  .boxcar-banner-section-v1 .banner-content .hero-cta {
+    font-size: 16px;
+    margin-bottom: 26px;
+  }
+}
+
 /* Home sections: keep page background pure white */
 .cars-section-two,
 .cars-section-three,
@@ -3315,16 +3358,21 @@ a:hover {
   align-items: center;
 }
 
+.why-choose-us-section .choose-us-block .content-box .title {
+  font-size: var(--h6-font-size);
+  line-height: var(--line-height-heading-small);
+}
+
 .why-choose-us-section .featureIcon {
   width: 30px;
   height: 30px;
-  color: #000;
+  color: var(--brand-gold);
   stroke: currentColor;
   transition: color 0.2s ease;
 }
 
 .why-choose-us-section .inner-box:hover .featureIcon {
-  color: #c9a24e;
+  color: var(--brand-gold-deep);
 }
 
 .layout-radius {
