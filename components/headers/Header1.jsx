@@ -11,8 +11,6 @@ import { getCarDetailHref } from "@/lib/carPaths";
 const headerSocialLinks = [
   { label: "Instagram", href: "#", iconClass: "fa-brands fa-instagram" },
   { label: "Facebook", href: "#", iconClass: "fa-brands fa-facebook-f" },
-  { label: "TikTok", href: "#", iconClass: "fa-brands fa-tiktok" },
-  { label: "YouTube", href: "#", iconClass: "fa-brands fa-youtube" }
 ];
 
 export default function Header1({

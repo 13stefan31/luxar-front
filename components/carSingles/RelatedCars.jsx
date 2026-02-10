@@ -225,6 +225,7 @@ export default function RelatedCars() {
   const { t } = useLanguage();
   const sliderAreaRef = useRef(null);
   const variantPanelRef = useRef(null);
+  const sliderRef = useRef(null);
   const [relatedCars, setRelatedCars] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -244,20 +245,37 @@ export default function RelatedCars() {
     fetchRelated();
   }, [t]);
 
+  useEffect(() => {
+    if (!relatedCars.length) {
+      return;
+    }
+    const rafId = requestAnimationFrame(() => {
+      if (sliderRef.current?.innerSlider?.onWindowResized) {
+        sliderRef.current.innerSlider.onWindowResized();
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("resize"));
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [relatedCars.length]);
+
   const toggleExpanded = (id) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
   const options = {
     infinite: false,
-    slidesToShow: 4,
+    slidesToShow: 5,
     slidesToScroll: 1,
     arrows: true,
     responsive: [
-      { breakpoint: 1600, settings: { slidesToShow: 3, slidesToScroll: 1, infinite: true } },
+      { breakpoint: 1600, settings: { slidesToShow: 4, slidesToScroll: 1, infinite: true } },
       { breakpoint: 1300, settings: { slidesToShow: 3, slidesToScroll: 1, infinite: true } },
       { breakpoint: 991, settings: { slidesToShow: 2, slidesToScroll: 1, infinite: true } },
       { breakpoint: 767, settings: { slidesToShow: 1, slidesToScroll: 1 } },
       { breakpoint: 576, settings: { slidesToShow: 1, slidesToScroll: 1 } },
+      { breakpoint: 480, settings: { slidesToShow: 1, slidesToScroll: 1 } },
     ],
   };
 
@@ -391,11 +409,6 @@ export default function RelatedCars() {
     toggleExpanded(id);
   };
 
-  const expandedDetailsLabel = (car) => {
-    const count = car.variants?.length || 0;
-    return t("Variants");
-  };
-
   return (
     <section className="cars-section-three">
       <div className="boxcar-container">
@@ -417,17 +430,22 @@ export default function RelatedCars() {
           }`}
           ref={sliderAreaRef}
         >
-          <Slider {...options} className="row car-slider-three slider-layout-1">
+          <Slider
+            key={`related-recommended-${relatedCars.length}`}
+            ref={sliderRef}
+            {...options}
+            className="car-slider-three"
+          >
             {relatedCars.map((car) => {
               const variantCount = car.variants ? car.variants.length : 0;
               const hasVariants = variantCount > 1;
               const isExpanded = expandedId === car.id;
-              const detailsLabel = hasVariants ? expandedDetailsLabel(car) : t("More");
+              const detailsLabel = hasVariants ? t("Variants") : t("Details");
               const variantsId = `related-variants-${car.id}`;
               return (
                 <div
                   key={car.id}
-                  className={`box-car car-block-three col-lg-3 col-md-6 col-sm-12${
+                  className={`box-car car-block-three${
                     isExpanded ? " is-expanded" : ""
                   }`}
                 >
@@ -508,9 +526,6 @@ export default function RelatedCars() {
                         >
                           {hasVariants ? (
                             <span className="variant-toggle">
-                              <span className="variant-toggle-count">
-                                {variantCount}
-                              </span>
                               <span className="variant-toggle-label">
                                 {detailsLabel}
                               </span>

@@ -680,9 +680,6 @@ export default function Cars2() {
                           >
                             {hasVariants ? (
                               <span className="variant-toggle">
-                                <span className="variant-toggle-count">
-                                  {variantCount}
-                                </span>
                                 <span className="variant-toggle-label">
                                   {detailsLabel}
                                 </span>

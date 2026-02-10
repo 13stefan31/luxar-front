@@ -6,6 +6,7 @@ import Link from "@/components/common/LocalizedLink";
 
 export default function Faq2() {
   const { t } = useLanguage();
+
   return (
     <section className="faq-inner-section layout-radius">
       <div className="boxcar-container">
@@ -27,9 +28,8 @@ export default function Faq2() {
           {/* FAQ Column */}
           <div className="faq-column wow fadeInUp" data-wow-delay="400ms">
             <div className="inner-column">
-              <div className="boxcar-title text-center"> 
+              <div className="boxcar-title text-center">
                 <h2 className="title">{t("General information")}</h2>
-
               </div>
               <ul className="widget-accordion wow fadeInUp">
                 {/*Block*/}

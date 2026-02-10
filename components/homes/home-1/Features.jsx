@@ -20,9 +20,9 @@ export default function Features() {
                     <a href="#">
                       <Image
                         alt=""
-                        src="/images/car.webp"
-                        width={836}
-                        height={700}
+                        src="https://images.pexels.com/photos/30362307/pexels-photo-30362307.jpeg?cs=srgb&dl=pexels-murdashots-611021625-30362307.jpg&fm=jpg"
+                        width={1920}
+                        height={1280}
                       />
                     </a>
                   </figure> 

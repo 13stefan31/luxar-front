@@ -445,7 +445,7 @@ export default function Cars() {
               const variantCount = car.variants ? car.variants.length : 0;
               const hasVariants = variantCount > 1;
               const isExpanded = expandedId === car.id;
-              const detailsLabel = hasVariants ? t("Variants") : t("More");
+              const detailsLabel = hasVariants ? t("Variants") : t("Details");
               const variantsId = `home-variants-${car.id}`;
               return (
                 <div
@@ -531,9 +531,6 @@ export default function Cars() {
                         >
                           {hasVariants ? (
                             <span className="variant-toggle">
-                              <span className="variant-toggle-count">
-                                {variantCount}
-                              </span>
                               <span className="variant-toggle-label">
                                 {detailsLabel}
                               </span>

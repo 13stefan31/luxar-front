@@ -9,6 +9,7 @@ import MobileMenu from "@/components/headers/MobileMenu";
 import Context from "@/context/Context";
 import BackToTop from "@/components/common/BackToTop";
 import { LanguageProvider } from "@/context/LanguageContext";
+import FloatingActionProvider from "@/context/FloatingActionContext";
 import { Toaster } from "react-hot-toast";
 export default function RootLayout({ children }) {
   return (
@@ -25,17 +26,19 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Suspense fallback={null}>
-          <LanguageProvider>
-            <Context>
-              <MobileMenu />
-              <div className="boxcar-wrapper">{children}</div>
-              <FilterSidebar />
-              <ClientBoot />
-            </Context>
-          </LanguageProvider>
+          <FloatingActionProvider>
+            <LanguageProvider>
+              <Context>
+                <MobileMenu />
+                <div className="boxcar-wrapper">{children}</div>
+                <FilterSidebar />
+                <ClientBoot />
+                <BackToTop />
+              </Context>
+            </LanguageProvider>
+          </FloatingActionProvider>
         </Suspense>
         <Toaster position="top-right" />
-        <BackToTop />
       </body>
     </html>
   );

@@ -102,7 +102,7 @@ const splitIntoColumns = (items, columns = 2) => {
   );
 };
 
-export default function Overview({ detail = {}, t }) {
+export default function Overview({ detail = {}, t, title }) {
   const translate = typeof t === "function" ? t : (value) => value;
   const detailItems = [
     {
@@ -182,7 +182,7 @@ export default function Overview({ detail = {}, t }) {
 
   return (
     <>
-      <h4 className="title">{translate("Car Overview")}</h4>
+      {title ? <h4 className="title">{title}</h4> : null}
       <div className="row">
         {columns.map((column, index) =>
           column.length ? (

@@ -14,6 +14,22 @@ export default function Hero() {
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffDate, setDropoffDate] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
+  const brandName = "Luxar";
+  const heroTitle = t(
+    "Welcome to Luxar Rent a Car - Leading Car Rental in Montenegro"
+  );
+  const heroTitleParts = heroTitle.split(brandName);
+  const heroTitleContent =
+    heroTitleParts.length > 1
+      ? heroTitleParts.map((part, index) => (
+          <React.Fragment key={`hero-title-${index}`}>
+            {part}
+            {index < heroTitleParts.length - 1 ? (
+              <span className="brand-gold-text">{brandName}</span>
+            ) : null}
+          </React.Fragment>
+        ))
+      : heroTitle;
   const engineTypeOptions = useMemo(
     () => [
       { value: "", label: t("Engine Type") },
@@ -82,7 +98,7 @@ export default function Hero() {
       <div className="container">
         <div className="banner-content">
           <h1 className="hero-title wow fadeInUp" data-wow-delay="100ms">
-            {t("Welcome to Luxar Rent a Car - Leading Car Rental in Montenegro")}
+            {heroTitleContent}
           </h1>
           <h2 className="hero-subtitle wow fadeInUp" data-wow-delay="200ms">
             {t("Rent a Car. Explore Montenegro. Discover places buses never reach.")}
@@ -168,7 +184,7 @@ export default function Hero() {
                 >
                   <div className="search-field line-r">
                     <label htmlFor="pickupDate" className="search-label">
-                      {t("Pickup date")}
+                      {t("Datum i vrijeme preuzimanja")}
                     </label>
                     <input
                       id="pickupDate"
@@ -181,9 +197,6 @@ export default function Hero() {
                   </div>
 
                   <div className="search-field line-r">
-                    <label htmlFor="pickupTime" className="search-label">
-                      {t("Pickup time")}
-                    </label>
                     <input
                       id="pickupTime"
                       type="time"
@@ -196,7 +209,7 @@ export default function Hero() {
 
                   <div className="search-field line-r">
                     <label htmlFor="dropoffDate" className="search-label">
-                      {t("Drop-off date")}
+                      {t("Datum i vrijeme povrata")}
                     </label>
                     <input
                       id="dropoffDate"
@@ -209,9 +222,6 @@ export default function Hero() {
                   </div>
 
                   <div className="search-field">
-                    <label htmlFor="dropoffTime" className="search-label">
-                      {t("Drop-off time")}
-                    </label>
                     <input
                       id="dropoffTime"
                       type="time"

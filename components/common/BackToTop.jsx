@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useFloatingAction } from "@/context/FloatingActionContext";
 
 const BackToTop = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const { reserveAction } = useFloatingAction() || {};
 
   // Show button when scrolled 200px
   const toggleVisibility = () => {
@@ -29,15 +31,15 @@ const BackToTop = () => {
 
   return (
     <div className="floating-actions">
-      {isVisible && (
+      {reserveAction?.label && reserveAction?.onClick && (
         <button
           type="button"
-          className="scroll-to-top scroll-to-target"
-          onClick={scrollToTop}
-          style={{ display: "block" }}
-          aria-label="Back to top"
+          className="reserve-vehicle-float"
+          onClick={reserveAction.onClick}
+          aria-label={reserveAction.label}
+          title={reserveAction.label}
         >
-          <span className="fa fa-angle-up"></span>
+          {reserveAction.label}
         </button>
       )}
       <a
@@ -49,6 +51,17 @@ const BackToTop = () => {
       >
         <span className="fa-brands fa-whatsapp"></span>
       </a>
+      {isVisible && (
+        <button
+          type="button"
+          className="scroll-to-top scroll-to-target"
+          onClick={scrollToTop}
+          style={{ display: "block" }}
+          aria-label="Back to top"
+        >
+          <span className="fa fa-angle-up"></span>
+        </button>
+      )}
     </div>
   );
 };
