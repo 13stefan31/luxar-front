@@ -1,40 +1,48 @@
 "use client";
 import { accordionData } from "@/data/faqs";
 
-import React, { useState } from "react";
+import React from "react";
 import { useLanguage } from "@/context/LanguageContext";
 
-export default function Accordion({ faqs = accordionData }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const highlightText = (text, query) => {
+  const normalized = query.trim();
+  if (!normalized) {
+    return text;
+  }
+  const escaped = escapeRegExp(normalized);
+  if (!escaped) {
+    return text;
+  }
+  const parts = String(text).split(new RegExp(`(${escaped})`, "gi"));
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <mark key={`${index}-${part}`} className="faq-highlight">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+};
+
+export default function Accordion({ faqs = accordionData, highlightQuery = "" }) {
   const { t } = useLanguage();
+  const normalizedQuery = highlightQuery.trim();
 
   return (
     <>
       {faqs.map((item, index) => (
-        <li
-          key={index}
-          className={`accordion block ${
-            currentIndex == index ? "active-block" : ""
-          }`}
-        >
-          <div
-            className={`acc-btn ${currentIndex == index ? "active" : ""}`}
-            onClick={() => {
-              setCurrentIndex((pre) => (pre == index ? -1 : index));
-            }}
-          >
-            {t(item.question)}
-            <div
-              className={`icon fa fa-${
-                currentIndex == index ? "minus" : "plus"
-              }`}
-            />
-          </div>
-          <div
-            className={`acc-content ${currentIndex == index ? "current" : ""}`}
-          >
+        <li key={index} className="accordion block">
+          <h2 className="acc-btn">
+            {highlightText(t(item.question), normalizedQuery)}
+          </h2>
+          <div className="acc-content current">
             <div className="content">
-              <div className="text">{t(item.answer)}</div>
+              <p className="text">
+                {highlightText(t(item.answer), normalizedQuery)}
+              </p>
             </div>
           </div>
         </li>

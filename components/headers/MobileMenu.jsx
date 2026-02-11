@@ -117,6 +117,8 @@ export default function MobileMenu() {
                       <a
                         href={social.link}
                         aria-label={getSocialLabel(social.iconClass)}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         <i className={social.iconClass} />
                       </a>

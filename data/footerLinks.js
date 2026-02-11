@@ -21,8 +21,14 @@ export const carBrands = [
   
 
 export const socialMediaLinks = [
-  { iconClass: "fa-brands fa-facebook-f", link: "#" },
+  {
+    iconClass: "fa-brands fa-facebook-f",
+    link: "https://www.facebook.com/people/Rent-a-Car-Montenegro/61578262611560/?rdid=NfaRO67sVlHn1I9D&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1FirRkUgda%2F%3Fref%3D1",
+  },
   { iconClass: "fa-brands fa-twitter", link: "#" },
-  { iconClass: "fa-brands fa-instagram", link: "#" },
+  {
+    iconClass: "fa-brands fa-instagram",
+    link: "https://www.instagram.com/carrentalmontenegro?igsh=dXEzcGhhY25jM3lv",
+  },
   { iconClass: "fa-brands fa-linkedin-in", link: "#" },
 ];

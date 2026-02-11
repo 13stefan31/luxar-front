@@ -42,12 +42,13 @@ export default function Blogs({ showBreadcrumb = false }) {
   const renderCard = (post, index, wrapperClassName) => {
     const imageSrc = post.src || post.imageSrc;
     const wowDelay = post.wowDelay || post.delay || "0ms";
+    const postHref = post.slug ? `/${post.slug}` : `/blog-single/${post.id}`;
     return (
       <div className={wrapperClassName} key={index}>
         <div className="inner-box wow fadeInUp" data-wow-delay={wowDelay}>
           <div className="image-box">
             <figure className="image">
-              <Link href={`/blog-single/${post.id}`}>
+              <Link href={postHref}>
                 <Image
                   alt={post.title}
                   src={imageSrc}
@@ -60,7 +61,7 @@ export default function Blogs({ showBreadcrumb = false }) {
           </div>
           <div className="content-box">
             <h6 className="title">
-              <Link href={`/blog-single/${post.id}`} title="">
+              <Link href={postHref} title="">
                 {t(post.title)}
               </Link>
             </h6>

@@ -9,8 +9,16 @@ import { useLanguage } from "@/context/LanguageContext";
 import { getCarDetailHref } from "@/lib/carPaths";
 
 const headerSocialLinks = [
-  { label: "Instagram", href: "#", iconClass: "fa-brands fa-instagram" },
-  { label: "Facebook", href: "#", iconClass: "fa-brands fa-facebook-f" },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/carrentalmontenegro?igsh=dXEzcGhhY25jM3lv",
+    iconClass: "fa-brands fa-instagram",
+  },
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/people/Rent-a-Car-Montenegro/61578262611560/?rdid=NfaRO67sVlHn1I9D&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1FirRkUgda%2F%3Fref%3D1",
+    iconClass: "fa-brands fa-facebook-f",
+  },
 ];
 
 export default function Header1({
@@ -164,7 +172,12 @@ export default function Header1({
               <ul className="header-social" aria-label="Social links">
                 {headerSocialLinks.map((social) => (
                   <li key={social.label}>
-                    <a href={social.href} aria-label={social.label}>
+                    <a
+                      href={social.href}
+                      aria-label={social.label}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <i className={social.iconClass} />
                     </a>
                   </li>

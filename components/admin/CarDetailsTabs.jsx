@@ -8,6 +8,7 @@ import {
   adminUpdateCar,
   adminUpdateCarInstance,
   adminDeleteCarInstance,
+  adminActivateCarInstance,
   adminCreateCarInstance,
   adminCreateCarPrices,
   adminGetCarPrices,
@@ -109,6 +110,25 @@ const coerceBooleanValue = (value) => {
     }
   }
   return null;
+};
+
+const resolveFlagValue = (value) => {
+  if (value === true || value === false) {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") {
+      return true;
+    }
+    if (normalized === "false" || normalized === "0") {
+      return false;
+    }
+  }
+  return Boolean(value);
 };
 
 const toggleBooleanLike = (value) => {
@@ -317,7 +337,7 @@ const formatTierLabel = (tier) => {
   return `${minDays} - ${maxDays} dana`;
 };
 
-const buildInstanceImageSet = (instance) => {
+const buildInstanceImageSet = (instance, fallbackCover = "") => {
   const generatedImages = Array.isArray(instance?.generatedImages)
     ? instance.generatedImages
     : [];
@@ -327,12 +347,19 @@ const buildInstanceImageSet = (instance) => {
   );
   const normalizedImages = normalizeImageList(instance?.images);
   const normalizedGenerated = normalizeImageList(galleryGenerated);
+  const instanceCover =
+    resolveRemoteImagePath(instance?.coverImage) ||
+    "";
+  const shouldFallbackToMainCover =
+    !instanceCover && fallbackCover;
   const cover =
     resolveRemoteImagePath(coverGenerated) ||
-    resolveRemoteImagePath(instance?.coverImage) ||
+    instanceCover ||
+    (shouldFallbackToMainCover ? fallbackCover : "") ||
     resolveRemoteImagePath(instance?.image) ||
     normalizedImages[0] ||
     normalizedGenerated[0] ||
+    fallbackCover ||
     "";
   const combinedGallery = [...normalizedImages, ...normalizedGenerated];
   const dedupedGallery = Array.from(new Set(combinedGallery));
@@ -354,6 +381,7 @@ export default function CarDetailsTabs({ carId }) {
     isActive: true,
   });
   const [instanceDeleting, setInstanceDeleting] = useState({});
+  const [instanceActivating, setInstanceActivating] = useState({});
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -389,7 +417,9 @@ export default function CarDetailsTabs({ carId }) {
     seatsNumber: "",
     doorNumber: "",
     doesHaveAirConditioning: false,
-    // description: "",
+    descriptionEn: "",
+    descriptionMne: "",
+    descriptionRu: "",
     equipment: {},
   });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -488,7 +518,12 @@ export default function CarDetailsTabs({ carId }) {
             resolvedCar?.doesHaveAirConditioning ||
             resolvedCar?.hasAirConditioning ||
             false,
-          // description: carPayload?.description || "",
+          descriptionMne:
+            resolvedCar?.descriptionMne ?? resolvedCar?.description_mne ?? "",
+          descriptionEn:
+            resolvedCar?.descriptionEn ?? resolvedCar?.description_en ?? "",
+          descriptionRu:
+            resolvedCar?.descriptionRu ?? resolvedCar?.description_ru ?? "",
           equipment: resolvedCar?.equipment || {},
         }));
         setInstances(keyedInstances);
@@ -496,7 +531,10 @@ export default function CarDetailsTabs({ carId }) {
         const instanceGalleryMap = {};
         const instancePreviewMap = {};
         keyedInstances.forEach((instance) => {
-          const { cover, gallery } = buildInstanceImageSet(instance);
+          const { cover, gallery } = buildInstanceImageSet(
+            instance,
+            defaultImage
+          );
           if (cover) {
             instanceCoverMap[instance.variationKey] = cover;
             instancePreviewMap[instance.variationKey] = cover;
@@ -647,6 +685,14 @@ export default function CarDetailsTabs({ carId }) {
     }));
   };
 
+  const handleRemoveVehicleEquipment = (key) => {
+    setFormValues((prev) => {
+      const equipment = { ...(prev.equipment || {}) };
+      delete equipment[key];
+      return { ...prev, equipment };
+    });
+  };
+
   const handleAddVehicleEquipment = () => {
     const trimmedKey = vehicleEquipmentDraft.key?.trim();
     if (!trimmedKey) {
@@ -689,7 +735,9 @@ export default function CarDetailsTabs({ carId }) {
         seatsNumber: formValues.seatsNumber,
         doorNumber: formValues.doorNumber,
         doesHaveAirConditioning: formValues.doesHaveAirConditioning,
-        // description: formValues.description,
+        descriptionMne: formValues.descriptionMne,
+        descriptionEn: formValues.descriptionEn,
+        descriptionRu: formValues.descriptionRu,
         equipment: formValues.equipment,
       };
       if (coverImageFile) {
@@ -1383,6 +1431,11 @@ export default function CarDetailsTabs({ carId }) {
       delete next[variationKey];
       return next;
     });
+    setInstanceActivating((prev) => {
+      const next = { ...prev };
+      delete next[variationKey];
+      return next;
+    });
     const coverUrl = instanceCoverUrlsRef.current[variationKey];
     if (coverUrl) {
       URL.revokeObjectURL(coverUrl);
@@ -1412,7 +1465,7 @@ export default function CarDetailsTabs({ carId }) {
               maxWidth: "320px",
             }}
           >
-            <p style={{ margin: 0, fontWeight: 600 }}>Potvrda brisanja</p>
+            <p style={{ margin: 0, fontWeight: 600 }}>Potvrda deaktivacije</p>
             <p
               style={{
                 margin: "8px 0 14px",
@@ -1420,7 +1473,7 @@ export default function CarDetailsTabs({ carId }) {
                 lineHeight: 1.4,
               }}
             >
-              Da li ste sigurni da želite da obrišete ovu varijaciju
+              Da li ste sigurni da želite da deaktivirate ovu varijaciju
               {messageSuffix}?
             </p>
             <div
@@ -1448,7 +1501,7 @@ export default function CarDetailsTabs({ carId }) {
                   resolve(true);
                 }}
               >
-                Obriši
+                Deaktiviraj
               </button>
             </div>
           </div>
@@ -1472,9 +1525,23 @@ export default function CarDetailsTabs({ carId }) {
       }));
       try {
         await adminDeleteCarInstance(registrationNumber);
-        toast.success("Varijacija je obrisana.");
+        setInstances((prev) =>
+          prev.map((instance) =>
+            instance.variationKey === variationKey
+              ? { ...instance, isDeleted: true }
+              : instance
+          )
+        );
+        setInstanceEdits((prev) => ({
+          ...prev,
+          [variationKey]: {
+            ...(prev[variationKey] || {}),
+            isDeleted: true,
+          },
+        }));
+        toast.success("Varijacija je deaktivirana.");
       } catch (err) {
-        toast.error(err?.message || "Greška pri brisanju varijacije.");
+        toast.error(err?.message || "Greška pri deaktivaciji varijacije.");
         setInstanceDeleting((prev) => {
           const next = { ...prev };
           delete next[variationKey];
@@ -1482,13 +1549,62 @@ export default function CarDetailsTabs({ carId }) {
         });
         return;
       }
+    } else {
+      removeVariationFromState(variationKey);
     }
-    removeVariationFromState(variationKey);
     setInstanceDeleting((prev) => {
       const next = { ...prev };
       delete next[variationKey];
       return next;
     });
+  };
+
+  const handleVariationActivate = async (variationKey, registrationNumber) => {
+    if (instanceActivating[variationKey]) {
+      return;
+    }
+    if (!registrationNumber) {
+      toast.error("Registracija je obavezna za aktivaciju.");
+      return;
+    }
+    setInstanceActivating((prev) => ({ ...prev, [variationKey]: true }));
+    try {
+      await adminActivateCarInstance(registrationNumber);
+      setInstances((prev) =>
+        prev.map((instance) =>
+          instance.variationKey === variationKey
+            ? { ...instance, isDeleted: false }
+            : instance
+        )
+      );
+      setInstanceEdits((prev) => ({
+        ...prev,
+        [variationKey]: {
+          ...(prev[variationKey] || {}),
+          isDeleted: false,
+        },
+      }));
+      toast.success("Varijacija je aktivirana.");
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri aktivaciji varijacije.");
+    } finally {
+      setInstanceActivating((prev) => {
+        const next = { ...prev };
+        delete next[variationKey];
+        return next;
+      });
+    }
   };
 
   const handleInstanceFieldChange = (variationKey, field, value) => {
@@ -1529,6 +1645,24 @@ export default function CarDetailsTabs({ carId }) {
         additionalEquipment: equipment,
       },
     }));
+  };
+
+  const handleRemoveEquipment = (variationKey, key) => {
+    setInstanceEdits((prev) => {
+      const existing =
+        prev[variationKey] ||
+        instances.find((instance) => instance.variationKey === variationKey) ||
+        {};
+      const equipment = { ...(existing.additionalEquipment || {}) };
+      delete equipment[key];
+      return {
+        ...prev,
+        [variationKey]: {
+          ...existing,
+          additionalEquipment: equipment,
+        },
+      };
+    });
   };
 
   const handleAddEquipment = (variationKey) => {
@@ -1673,6 +1807,7 @@ export default function CarDetailsTabs({ carId }) {
       price: "",
       status: "draft",
       additionalEquipment: {},
+      isDeleted: false,
       isNewInstance: true,
     };
     setInstances((prev) => [...prev, blankVariation]);
@@ -2065,7 +2200,21 @@ export default function CarDetailsTabs({ carId }) {
                           if (isTextValue && booleanValue === null) {
                             return (
                               <label key={key} className="equipment-input">
-                                <span>{key}</span>
+                                <div className="equipment-input-header">
+                                  <span>{key}</span>
+                                  <button
+                                    type="button"
+                                    className="equipment-remove"
+                                    aria-label="Ukloni opremu"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      handleRemoveVehicleEquipment(key);
+                                    }}
+                                  >
+                                    -
+                                  </button>
+                                </div>
                                 <input
                                   type="text"
                                   value={value ?? ""}
@@ -2091,6 +2240,18 @@ export default function CarDetailsTabs({ carId }) {
                                 onChange={() => handleVehicleEquipmentToggle(key)}
                               />
                               <span>{key}</span>
+                              <button
+                                type="button"
+                                className="equipment-remove"
+                                aria-label="Ukloni opremu"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleRemoveVehicleEquipment(key);
+                                }}
+                              >
+                                -
+                              </button>
                             </label>
                           );
                         })
@@ -2146,17 +2307,39 @@ export default function CarDetailsTabs({ carId }) {
                   </div>
                 );
               })()}
-              {/* <label className="full">
-                <span>Description</span>
+              <label className="full">
+                <span>Opis (ME)</span>
                 <textarea
                   rows={4}
-                  value={formValues.description || ""}
-                  onChange={handleInputChange("description")}
+                  value={formValues.descriptionMne || ""}
+                  onChange={handleInputChange("descriptionMne")}
                 />
-                {fieldErrors.description && (
-                  <p className="field-error-text">{fieldErrors.description}</p>
+                {fieldErrors.descriptionMne && (
+                  <p className="field-error-text">{fieldErrors.descriptionMne}</p>
                 )}
-              </label> */}
+              </label>
+              <label className="full">
+                <span>Opis (EN)</span>
+                <textarea
+                  rows={4}
+                  value={formValues.descriptionEn || ""}
+                  onChange={handleInputChange("descriptionEn")}
+                />
+                {fieldErrors.descriptionEn && (
+                  <p className="field-error-text">{fieldErrors.descriptionEn}</p>
+                )}
+              </label>
+              <label className="full">
+                <span>Opis (RU)</span>
+                <textarea
+                  rows={4}
+                  value={formValues.descriptionRu || ""}
+                  onChange={handleInputChange("descriptionRu")}
+                />
+                {fieldErrors.descriptionRu && (
+                  <p className="field-error-text">{fieldErrors.descriptionRu}</p>
+                )}
+              </label>
               <div className="form-actions">
                 <button
                   type="button"
@@ -2190,15 +2373,28 @@ export default function CarDetailsTabs({ carId }) {
                   const edit = instanceEdits[variationKey] || instance;
                   const expanded = Boolean(expandedVariations[variationKey]);
                   const variationNumber =
-                    edit.displayNumber ?? instance.displayNumber ?? index + 1;
-                  const variationLabelSuffix = edit.registrationNumber
-                    ? edit.registrationNumber
-                    : "Nova";
+                    edit.displayNumber ?? instance.displayNumber ?? index + 1; 
+                  const variationUuid = edit.uuid || instance.code || "";
                   const headerInfo = formatEngineLabel(
                     edit.enginePower,
                     edit.engineCapacity,
                     edit.engineType
                   );
+                  const shouldShowHeaderInfo =
+                    headerInfo && headerInfo !== "—";
+                  const rawDeleted =
+                    edit.isDeleted ?? instance.isDeleted ?? false;
+                  const isDeleted = resolveFlagValue(rawDeleted);
+                  const activationRegistration =
+                    edit.savedRegistrationNumber || edit.registrationNumber;
+                  const canActivate =
+                    isDeleted && Boolean(activationRegistration);
+                  const canDeactivate =
+                    !isDeleted && Boolean(activationRegistration);
+                  const canToggleStatus = isDeleted ? canActivate : canDeactivate;
+                  const isStatusProcessing = isDeleted
+                    ? instanceActivating[variationKey]
+                    : instanceDeleting[variationKey];
                   const equipmentEntries = Object.entries(
                     edit.additionalEquipment || {}
                   );
@@ -2233,7 +2429,19 @@ export default function CarDetailsTabs({ carId }) {
                       className={`variation-card ${expanded ? "expanded" : ""}`}
                     >
                       <div className="variation-header">
-                        <div className="variation-title">
+                        <div
+                          className="variation-title"
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={expanded}
+                          onClick={() => toggleVariation(variationKey)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              toggleVariation(variationKey);
+                            }
+                          }}
+                        >
                           <span
                             className={`variation-thumb ${
                               variationThumb ? "has-image" : ""
@@ -2246,36 +2454,51 @@ export default function CarDetailsTabs({ carId }) {
                             aria-hidden="true"
                           />
                           <p className="variation-label">
-                            Varijacija #{variationNumber} · {variationLabelSuffix}
+                              #{variationNumber}  
+                            {variationUuid ? (
+                              <span className="variation-uuid">
+                                {" "}
+                                ({variationUuid})
+                              </span>
+                            ) : null}
+                            <span
+                              className={`chevron ${expanded ? "open" : ""}`}
+                              aria-hidden="true"
+                            />
                           </p> 
+                          {shouldShowHeaderInfo && (
+                            <p className="variation-meta">
+                              <span>{headerInfo}</span>
+                            </p>
+                          )}
                         </div>
                         <div className="variation-header-controls"> 
                           <button
                             type="button"
-                            className="link-button"
-                            onClick={() => toggleVariation(variationKey)}
+                            className={`link-button${isDeleted ? "" : " danger"}`}
+                            onClick={() => {
+                              if (isDeleted) {
+                                handleVariationActivate(
+                                  variationKey,
+                                  activationRegistration
+                                );
+                              } else {
+                                handleVariationDelete(
+                                  variationKey,
+                                  activationRegistration
+                                );
+                              }
+                            }}
+                            disabled={!canToggleStatus || Boolean(isStatusProcessing)}
                           >
-                            {expanded ? "Sakrij" : "Uredi"}
-                            <span
-                              className={`chevron ${expanded ? "open" : ""}`}
-                            />
+                            {isStatusProcessing
+                              ? isDeleted
+                                ? "Aktiviram..."
+                                : "Deaktiviram..."
+                              : isDeleted
+                              ? "Aktiviraj"
+                              : "Deaktiviraj"}
                           </button>
-                              <button
-                                type="button"
-                                className="link-button danger"
-                                onClick={() =>
-                                  handleVariationDelete(
-                                    variationKey,
-                                    edit.savedRegistrationNumber ||
-                                      edit.registrationNumber
-                                  )
-                                }
-                                disabled={Boolean(instanceDeleting[variationKey])}
-                              >
-                        {instanceDeleting[variationKey]
-                          ? "Brišem..."
-                          : "Obriši"}
-                      </button>
                         </div>
                       </div>
                       {expanded && (
@@ -2388,11 +2611,11 @@ export default function CarDetailsTabs({ carId }) {
                                 </p>
                               )}
                             </label>
-                            {existingGallery.length > 0 && (
-                              <div className="existing-images">
-                                <p className="image-filename">Postojeće slike:</p>
-                                <div className="image-preview-grid">
-                                  {existingGallery.map((image, index) => (
+                          {existingGallery.length > 0 && (
+                            <div className="existing-images">
+                              <p className="image-filename">Postojeće slike:</p>
+                              <div className="image-preview-grid">
+                                {existingGallery.map((image, index) => (
                                     <div
                                       className="image-preview has-image"
                                       key={`${image}-${index}`}
@@ -2403,14 +2626,14 @@ export default function CarDetailsTabs({ carId }) {
                                       />
                                     </div>
                                   ))}
-                                </div>
                               </div>
-                            )}
-                          </div>
-                          <div className="variation-equipment">
-                            <p className="variation-section-title">
-                              Dodatna oprema
-                            </p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="variation-equipment">
+                          <p className="variation-section-title">
+                            Dodatna oprema
+                          </p>
                             <div className="equipment-grid">
                               {equipmentEntries.length ? (
                                 equipmentEntries.map(([key, value]) => {
@@ -2424,7 +2647,24 @@ export default function CarDetailsTabs({ carId }) {
                                         key={key}
                                         className="equipment-input"
                                       >
-                                        <span>{key}</span>
+                                        <div className="equipment-input-header">
+                                          <span>{key}</span>
+                                          <button
+                                            type="button"
+                                            className="equipment-remove"
+                                            aria-label="Ukloni opremu"
+                                            onClick={(event) => {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                              handleRemoveEquipment(
+                                                variationKey,
+                                                key
+                                              );
+                                            }}
+                                          >
+                                            -
+                                          </button>
+                                        </div>
                                         <input
                                           type="text"
                                           value={value ?? ""}
@@ -2456,6 +2696,21 @@ export default function CarDetailsTabs({ carId }) {
                                         }
                                       />
                                       <span>{key}</span>
+                                      <button
+                                        type="button"
+                                        className="equipment-remove"
+                                        aria-label="Ukloni opremu"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          handleRemoveEquipment(
+                                            variationKey,
+                                            key
+                                          );
+                                        }}
+                                      >
+                                        -
+                                      </button>
                                     </label>
                                   );
                                 })

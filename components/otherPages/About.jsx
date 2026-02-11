@@ -50,13 +50,21 @@ const galleryItems = [
 ];
 
 export default function About() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const brandByLocale = {
+    en: "Luxar",
+    me: "Luxar",
+    ru: "Luxar",
+  };
+  const brand = brandByLocale[locale] || "Luxar";
+  const headingTemplate = t("About {brand} - Car Rental Montenegro");
+  const headingParts = headingTemplate.split("{brand}");
   return (
     <>
       <div className="upper-box">
         <div className="boxcar-container">
           <div className="row wow fadeInUp">
-            <div className="col-lg-6 col-md-6 col-sm-12">
+            <div className="col-lg-12 col-md-12 col-sm-12">
               <div className="boxcar-title">
                 <ul className="breadcrumb">
                   <li>
@@ -66,29 +74,35 @@ export default function About() {
                     <span>{t("About us")}</span>
                   </li>
                 </ul>
-                <h2>{t("About us")}</h2>
-                <div className="text">
-                  {t(
-                    "We make renting a car simple, flexible, and transparent."
+                <h1>
+                  {headingParts.length === 2 ? (
+                    <>
+                      {headingParts[0]}
+                      <span className="brand-gold-text">{brand}</span>
+                      {headingParts[1]}
+                    </>
+                  ) : (
+                    headingTemplate
                   )}
-                </div>
+                </h1>
+                
               </div>
             </div>
-            <div className="col-lg-6 col-md-6 col-sm-12">
-              <div className="content-box">
+            <div className="col-lg-12 col-md-12 col-sm-12">
+              <div className="">
                 <div className="text">
                   {t(
-                    "From quick online booking to easy pickup and return, we focus on a smooth rental experience with no hidden costs."
+                    "Luxar - Car Rental Montenegro offers flexible rental packages, transparent pricing with no hidden costs, and professionally maintained vehicles to ensure a safe and reliable experience."
                   )}
                 </div>
                 <div className="text">
                   {t(
-                    "Our fleet ranges from compact city cars to spacious SUVs, all regularly serviced and ready for the road."
+                    "With country-wide delivery, airport pickup and dropoff, and easy booking, we make renting a car in Montenegro simple and convenient wherever your journey begins."
                   )}
                 </div>
                 <div className="text">
                   {t(
-                    "Whether you need a car for a day, a week, or longer, we tailor the rental to your trip and budget."
+                    "As a family-owned local business, we combine personal service and local expertise to help you explore Montenegro's coast, mountains, and everything in between with confidence."
                   )}
                 </div>
               </div>

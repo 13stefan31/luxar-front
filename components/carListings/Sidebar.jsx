@@ -113,11 +113,14 @@ export default function Sidebar() {
             <div className="row">
               <div className="col-lg-12">
                 <div className="price-box">
+                  <div className="date-time-group-label">
+                    {t("Pickup")}
+                  </div>
                   <form
                     onSubmit={(event) => event.preventDefault()}
-                    className="row g-0"
+                    className="row g-0 date-time-row"
                   >
-                    <div className="form-column col-lg-6">
+                    <div className="form-column col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Pickup date")}</label>
                         <input
@@ -128,7 +131,7 @@ export default function Sidebar() {
                         />
                       </div>
                     </div>
-                    <div className="form-column v2 col-lg-6">
+                    <div className="form-column v2 col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Pickup time")}</label>
                         <input
@@ -144,11 +147,14 @@ export default function Sidebar() {
               </div>
               <div className="col-lg-12">
                 <div className="price-box">
+                  <div className="date-time-group-label">
+                    {t("Return")}
+                  </div>
                   <form
                     onSubmit={(event) => event.preventDefault()}
-                    className="row g-0"
+                    className="row g-0 date-time-row"
                   >
-                    <div className="form-column col-lg-6">
+                    <div className="form-column col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Drop-off date")}</label>
                         <input
@@ -159,7 +165,7 @@ export default function Sidebar() {
                         />
                       </div>
                     </div>
-                    <div className="form-column v2 col-lg-6">
+                    <div className="form-column v2 col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Drop-off time")}</label>
                         <input
@@ -207,9 +213,9 @@ export default function Sidebar() {
                 <div className="price-box">
                   <form
                     onSubmit={(event) => event.preventDefault()}
-                    className="row g-0"
+                    className="row g-0 date-time-row"
                   >
-                    <div className="form-column col-lg-6">
+                    <div className="form-column col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Min price")}</label>
                         <input
@@ -222,7 +228,7 @@ export default function Sidebar() {
                         />
                       </div>
                     </div>
-                    <div className="form-column v2 col-lg-6">
+                    <div className="form-column v2 col-6 col-lg-6">
                       <div className="form_boxes">
                         <label>{t("Max price")}</label>
                         <input

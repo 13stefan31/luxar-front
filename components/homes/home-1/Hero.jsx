@@ -186,50 +186,84 @@ export default function Hero() {
                     <label htmlFor="pickupDate" className="search-label">
                       {t("Datum i vrijeme preuzimanja")}
                     </label>
-                    <input
-                      id="pickupDate"
-                      type="date"
-                      value={pickupDate}
-                      onChange={(e) => setPickupDate(e.target.value)}
-                      aria-label={t("Pickup date")}
-                      placeholder={t("Pickup date")}
-                    />
+                    <div className="search-input">
+                      <input
+                        id="pickupDate"
+                        type="date"
+                        value={pickupDate}
+                        onChange={(e) => setPickupDate(e.target.value)}
+                        aria-label={t("Pickup date")}
+                        placeholder={t("Pickup date")}
+                      />
+                      <span className="search-icon" aria-hidden="true">
+                        <i className="fa fa-calendar" />
+                      </span>
+                    </div>
                   </div>
 
                   <div className="search-field line-r">
-                    <input
-                      id="pickupTime"
-                      type="time"
-                      value={pickupTime}
-                      onChange={(e) => setPickupTime(e.target.value)}
-                      aria-label={t("Pickup time")}
-                      placeholder={t("Pickup time")}
-                    />
+                    <label
+                      htmlFor="pickupTime"
+                      className="search-label is-placeholder"
+                      aria-hidden="true"
+                    >
+                      {t("Datum i vrijeme preuzimanja")}
+                    </label>
+                    <div className="search-input">
+                      <input
+                        id="pickupTime"
+                        type="time"
+                        value={pickupTime}
+                        onChange={(e) => setPickupTime(e.target.value)}
+                        aria-label={t("Pickup time")}
+                        placeholder={t("Pickup time")}
+                      />
+                      <span className="search-icon" aria-hidden="true">
+                        <i className="fa fa-clock" />
+                      </span>
+                    </div>
                   </div>
 
                   <div className="search-field line-r">
                     <label htmlFor="dropoffDate" className="search-label">
                       {t("Datum i vrijeme povrata")}
                     </label>
-                    <input
-                      id="dropoffDate"
-                      type="date"
-                      value={dropoffDate}
-                      onChange={(e) => setDropoffDate(e.target.value)}
-                      aria-label={t("Drop-off date")}
-                      placeholder={t("Drop-off date")}
-                    />
+                    <div className="search-input">
+                      <input
+                        id="dropoffDate"
+                        type="date"
+                        value={dropoffDate}
+                        onChange={(e) => setDropoffDate(e.target.value)}
+                        aria-label={t("Drop-off date")}
+                        placeholder={t("Drop-off date")}
+                      />
+                      <span className="search-icon" aria-hidden="true">
+                        <i className="fa fa-calendar" />
+                      </span>
+                    </div>
                   </div>
 
                   <div className="search-field">
-                    <input
-                      id="dropoffTime"
-                      type="time"
-                      value={dropoffTime}
-                      onChange={(e) => setDropoffTime(e.target.value)}
-                      aria-label={t("Drop-off time")}
-                      placeholder={t("Drop-off time")}
-                    />
+                    <label
+                      htmlFor="dropoffTime"
+                      className="search-label is-placeholder"
+                      aria-hidden="true"
+                    >
+                      {t("Datum i vrijeme povrata")}
+                    </label>
+                    <div className="search-input">
+                      <input
+                        id="dropoffTime"
+                        type="time"
+                        value={dropoffTime}
+                        onChange={(e) => setDropoffTime(e.target.value)}
+                        aria-label={t("Drop-off time")}
+                        placeholder={t("Drop-off time")}
+                      />
+                      <span className="search-icon" aria-hidden="true">
+                        <i className="fa fa-clock" />
+                      </span>
+                    </div>
                   </div>
 
                   <Link href={dateTimeSearchHref} className="form-submit">

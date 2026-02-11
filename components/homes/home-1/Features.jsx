@@ -61,7 +61,7 @@ export default function Features() {
                   </li>
                 </ul>
                 <Link
-                  href={`/about`}
+                  href={`/cars`}
                   className="read-more wow fadeInUp"
                   data-wow-delay="200ms"
                 >

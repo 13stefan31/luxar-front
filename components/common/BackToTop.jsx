@@ -44,7 +44,7 @@ const BackToTop = () => {
       )}
       <a
         className="whatsapp-float"
-        href="https://wa.me/38267123456"
+        href="https://wa.me/38267880066"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="WhatsApp"

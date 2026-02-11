@@ -34,7 +34,9 @@ const DEFAULT_VALUES = {
   seatsNumber: "",
   doorNumber: "",
   doesHaveAirConditioning: false,
-  description: "",
+  descriptionEn: "",
+  descriptionMne: "",
+  descriptionRu: "",
   equipment: {},
 };
 
@@ -252,7 +254,7 @@ export default function CarForm({
       return;
     }
     setFieldErrors({});
-    const { description: _description, ...payloadValues } = values;
+    const payloadValues = values;
     const payload = {
       ...payloadValues,
       equipment: values.equipment || {},
@@ -470,11 +472,38 @@ export default function CarForm({
           </label>
         </div>
       </div>
+      <div className="section-heading">Opis</div>
       <label className="full">
-        <span>Opis</span>
-        <textarea rows={4} value={values.description} onChange={handleChange("description")} />
-        {fieldErrors.description && (
-          <p className="field-error-text">{fieldErrors.description}</p>
+        <span>Opis (ME)</span>
+        <textarea
+          rows={4}
+          value={values.descriptionMne}
+          onChange={handleChange("descriptionMne")}
+        />
+        {fieldErrors.descriptionMne && (
+          <p className="field-error-text">{fieldErrors.descriptionMne}</p>
+        )}
+      </label>
+      <label className="full">
+        <span>Opis (EN)</span>
+        <textarea
+          rows={4}
+          value={values.descriptionEn}
+          onChange={handleChange("descriptionEn")}
+        />
+        {fieldErrors.descriptionEn && (
+          <p className="field-error-text">{fieldErrors.descriptionEn}</p>
+        )}
+      </label>
+      <label className="full">
+        <span>Opis (RU)</span>
+        <textarea
+          rows={4}
+          value={values.descriptionRu}
+          onChange={handleChange("descriptionRu")}
+        />
+        {fieldErrors.descriptionRu && (
+          <p className="field-error-text">{fieldErrors.descriptionRu}</p>
         )}
       </label>
       {showEquipmentSection && (

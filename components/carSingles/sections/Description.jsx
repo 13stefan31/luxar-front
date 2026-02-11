@@ -1,23 +1,64 @@
-import Image from "next/image";
-import React from "react";
+import React, { useMemo } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
-export default function Description() {
+const DESCRIPTION_FIELDS_BY_LOCALE = {
+  en: ["descriptionEn", "description_en"],
+  me: ["descriptionMne", "description_mne"],
+  ru: ["descriptionRu", "description_ru"],
+};
+
+const normalizeText = (value) => {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  const text = String(value).trim();
+  return text;
+};
+
+const resolveDescription = ({ detail, locale }) => {
+  const localeFields = DESCRIPTION_FIELDS_BY_LOCALE[locale] || [];
+  for (const key of localeFields) {
+    const normalized = normalizeText(detail?.[key]);
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return "";
+};
+
+const splitDescription = (value) => {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return [];
+  }
+  return normalized
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.replace(/\n/g, " ").trim())
+    .filter(Boolean);
+};
+
+export default function Description({ detail = {} }) {
+  const { t, locale } = useLanguage();
+  const description = useMemo(
+    () => resolveDescription({ detail, locale }),
+    [detail, locale]
+  );
+  const paragraphs = useMemo(() => splitDescription(description), [description]);
+  const title = t("Description");
+
+  if (!paragraphs.length) {
+    return null;
+  }
+
   return (
     <>
-      <h4 className="title">Description</h4>
-      <div className="text two">
-        Quisque imperdiet dignissim enim dictum finibus. Sed consectetutr
-        convallis enim eget laoreet. Aenean vitae nisl mollis, porta risus vel,
-        dapibus lectus. Etiam ac suscipit eros, eget maximus
-      </div>
-      <div className="text">
-        Etiam sit amet ex pharetra, venenatis ante vehicula, gravida sapien.
-        Fusce eleifend vulputate nibh, non cursus augue placerat pellentesque.
-        Sed venenatis risus nec felis mollis, in pharetra urna euismod. Morbi
-        aliquam ut turpis sit amet ultrices. Vestibulum mattis blandit nisl, et
-        tristique elit scelerisque nec. Fusce eleifend laoreet dui eget aliquet.
-        Ut rutrum risus et nunc pretium scelerisque.
-      </div>
+      <h4 className="title">{title}</h4>
+      {paragraphs.map((paragraph, index) => (
+        <div key={`description-${index}`} className={index ? "text" : "text two"}>
+          {paragraph}
+        </div>
+      ))}
     </>
   );
 }

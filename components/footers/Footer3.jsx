@@ -141,7 +141,11 @@ export default function Footer3({
                     <ul>
                       {socialMediaLinks.map((social, index) => (
                         <li key={index}>
-                          <a href={social.link}>
+                          <a
+                            href={social.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <i className={social.iconClass} />
                           </a>
                         </li>

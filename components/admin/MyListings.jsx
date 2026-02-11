@@ -214,10 +214,16 @@ const normalizeCarsPayload = (payload) => {
     payload?.results,
     payload?.data?.items,
     payload?.data?.cars,
+    payload?.data?.data,
     payload,
   ];
   const normalizedArray = sources.find((source) => Array.isArray(source)) ?? [];
   return normalizedArray.map(toTableRow);
+};
+
+const toNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const extractPaginationMeta = (payload, fallbackPage, fallbackLimit) => {
@@ -227,26 +233,40 @@ const extractPaginationMeta = (payload, fallbackPage, fallbackLimit) => {
     payload?.data?.meta ||
     payload?.data?.pagination ||
     {};
-  const perPage =
+  const perPage = toNumber(
     meta?.per_page ??
-    meta?.perPage ??
-    meta?.perPageSize ??
-    meta?.limit ??
-    fallbackLimit;
-  const totalItems =
+      meta?.perPage ??
+      meta?.perPageSize ??
+      meta?.itemsPerPage ??
+      meta?.limit ??
+      fallbackLimit,
+    fallbackLimit ?? 0
+  );
+  const totalItems = toNumber(
     meta?.total ??
-    meta?.totalItems ??
-    meta?.total_records ??
-    payload?.total ??
-    payload?.records ??
-    0;
+      meta?.totalItems ??
+      meta?.total_records ??
+      payload?.total ??
+      payload?.records,
+    0
+  );
+  const explicitTotalPages = toNumber(
+    meta?.last_page ?? meta?.total_pages ?? meta?.totalPages ?? meta?.pages,
+    null
+  );
   const totalPages =
-    meta?.last_page ??
-    meta?.total_pages ??
-    meta?.totalPages ??
-    (perPage ? Math.max(1, Math.ceil(totalItems / perPage)) : 1);
-  const currentPage =
-    meta?.current_page ?? meta?.currentPage ?? meta?.page ?? fallbackPage ?? 1;
+    explicitTotalPages && explicitTotalPages > 0
+      ? explicitTotalPages
+      : perPage
+        ? Math.max(1, Math.ceil(totalItems / perPage))
+        : 1;
+  const currentPage = Math.max(
+    1,
+    toNumber(
+      meta?.current_page ?? meta?.currentPage ?? meta?.page ?? fallbackPage,
+      fallbackPage ?? 1
+    )
+  );
 
   return {
     currentPage,
@@ -262,7 +282,7 @@ export default function MyListings() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const [limit] = useState(100);
+  const [limit] = useState(10);
   const [paginationMeta, setPaginationMeta] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -282,18 +302,8 @@ export default function MyListings() {
           signal: controller.signal,
         });
         const normalized = normalizeCarsPayload(payload);
-        if (normalized.length) {
-          setRows(normalized);
-          setPaginationMeta(extractPaginationMeta(payload, page, limit));
-        } else {
-          setRows([]);
-          setPaginationMeta((prev) => ({
-            ...prev,
-            currentPage: page,
-            totalPages: 1,
-            totalItems: 0,
-          }));
-        }
+        setRows(normalized);
+        setPaginationMeta(extractPaginationMeta(payload, page, limit));
       } catch (err) {
         if (err?.name === "AbortError") {
           return;
@@ -311,13 +321,13 @@ export default function MyListings() {
         }
 
         setError(err?.message || "Neuspješno učitavanje vozila.");
-          setRows([]);
-          setPaginationMeta((prev) => ({
-            ...prev,
-            currentPage: page,
-            totalPages: 1,
-            totalItems: 0,
-          }));
+        setRows([]);
+        setPaginationMeta((prev) => ({
+          ...prev,
+          currentPage: page,
+          totalPages: 1,
+          totalItems: 0,
+        }));
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false);

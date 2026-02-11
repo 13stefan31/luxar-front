@@ -6,6 +6,7 @@ import Slider from "react-slick";
 import Link from "@/components/common/LocalizedLink";
 import { useLanguage } from "@/context/LanguageContext";
 import { useFloatingAction } from "@/context/FloatingActionContext";
+import { normalizeInventoryImageUrl } from "@/lib/inventoryApi";
 import RelatedCars from "./RelatedCars";
 import Overview from "./sections/Overview";
 import Description from "./sections/Description";
@@ -60,7 +61,7 @@ const formatDateForMessage = (value) => {
 };
 
 const WHATSAPP_NUMBER =
-  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "38267600666";
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "38267880066";
 
 export default function Single1({ carItem }) {
   const { setReserveAction } = useFloatingAction() || {};
@@ -81,7 +82,9 @@ export default function Single1({ carItem }) {
   const minDropoffDate = pickupDate || today;
   const detail = carItem?.raw || {};
   const galleryImages = Array.isArray(carItem?.images)
-    ? carItem.images.filter(Boolean)
+    ? carItem.images
+        .map((image) => normalizeInventoryImageUrl(image, ""))
+        .filter(Boolean)
     : [];
   const sliderImages = galleryImages.length
     ? galleryImages
@@ -423,7 +426,7 @@ export default function Single1({ carItem }) {
                     />
                   </div>
                   <div className="description-sec">
-                    <Description />
+                    <Description detail={detail} />
                   </div>
                 </div>
               </div>
