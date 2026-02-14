@@ -15,13 +15,86 @@ import {
 } from "@/lib/inventoryApi";
 import PriceWithInfo from "@/components/common/PriceWithInfo";
 
+const pad2 = (value) => String(value).padStart(2, "0");
+const normalizeTimeTo24h = (value) => {
+  if (!value) {
+    return "";
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return "";
+  }
+  const ampmMatch = raw.match(
+    /^\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])\s*$/
+  );
+  if (ampmMatch) {
+    let hours = Number(ampmMatch[1]);
+    const minutes = Number(ampmMatch[2] ?? "0");
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      return raw;
+    }
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+      return raw;
+    }
+    const isPm = ampmMatch[3].toLowerCase() === "pm";
+    if (hours === 12) {
+      hours = isPm ? 12 : 0;
+    } else if (isPm) {
+      hours += 12;
+    }
+    return `${pad2(hours)}:${pad2(minutes)}`;
+  }
+  const timeMatch = raw.match(/^\s*(\d{1,2})(?::(\d{2}))?/);
+  if (!timeMatch) {
+    return raw;
+  }
+  const hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2] ?? "0");
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return raw;
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return raw;
+  }
+  return `${pad2(hours)}:${pad2(minutes)}`;
+};
 const splitDateTime = (value) => {
   if (!value) {
     return { date: "", time: "" };
   }
-  const [date, time] = String(value).split("T");
-  return { date: date || "", time: time || "" };
+  const raw = String(value).trim();
+  if (!raw) {
+    return { date: "", time: "" };
+  }
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](.+))?$/);
+  if (!match) {
+    return { date: raw, time: "" };
+  }
+  const date = match[1] || "";
+  const time = normalizeTimeTo24h(match[2] || "");
+  return { date, time };
 };
+const formatRequestDateTime = (value) => {
+  const { date, time } = splitDateTime(value);
+  if (!date || !time) {
+    return "";
+  }
+  return `${date} ${time}`;
+};
+const toLocalInputDate = (date) => {
+  const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localDate = new Date(date.getTime() - tzOffsetMs);
+  return localDate.toISOString().slice(0, 10);
+};
+const getTodayInputDate = () => toLocalInputDate(new Date());
+const clampDateToMin = (value, minDate) => {
+  if (!value) {
+    return "";
+  }
+  return value < minDate ? minDate : value;
+};
+const resolveMinDropoffDate = (pickupDate, today) =>
+  pickupDate && pickupDate >= today ? pickupDate : today;
 
 const API_URL = `${INVENTORY_API_ROOT}/cars`;
 const FALLBACK_IMAGE = "/images/car.webp";
@@ -255,6 +328,11 @@ export default function Cars() {
   const [pickupTime, setPickupTime] = useState(DEFAULT_TIME);
   const [dropoffDate, setDropoffDate] = useState("");
   const [dropoffTime, setDropoffTime] = useState(DEFAULT_TIME);
+  const today = useMemo(() => getTodayInputDate(), []);
+  const minDropoffDate = useMemo(
+    () => resolveMinDropoffDate(pickupDate, today),
+    [pickupDate, today]
+  );
   const {
     engineType,
     transmissionType,
@@ -262,8 +340,8 @@ export default function Cars() {
     manufactureYear,
     minPrice,
     maxPrice,
-    pickupDateTime,
-    dropoffDateTime,
+    startingDate,
+    endingDate,
   } = filters;
   const {
     engineType: draftEngineType,
@@ -314,16 +392,25 @@ export default function Cars() {
     ],
     [t]
   );
-  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${minPrice}|${maxPrice}|${pickupDateTime}|${dropoffDateTime}`;
+  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${minPrice}|${maxPrice}|${startingDate}|${endingDate}`;
   useEffect(() => {
     setDraftFilters(filters);
-    const nextPickup = splitDateTime(pickupDateTime);
-    const nextDropoff = splitDateTime(dropoffDateTime);
-    setPickupDate(nextPickup.date);
+    const nextPickup = splitDateTime(startingDate);
+    const nextDropoff = splitDateTime(endingDate);
+    const normalizedPickupDate = clampDateToMin(nextPickup.date, today);
+    const nextMinDropoffDate = resolveMinDropoffDate(
+      normalizedPickupDate,
+      today
+    );
+    const normalizedDropoffDate = clampDateToMin(
+      nextDropoff.date,
+      nextMinDropoffDate
+    );
+    setPickupDate(normalizedPickupDate);
     setPickupTime(nextPickup.time || DEFAULT_TIME);
-    setDropoffDate(nextDropoff.date);
+    setDropoffDate(normalizedDropoffDate);
     setDropoffTime(nextDropoff.time || DEFAULT_TIME);
-  }, [filterKey]);
+  }, [filterKey, today]);
   const handleFilterChange = (key) => (value) => {
     setDraftFilters((prev) => ({ ...prev, [key]: value }));
   };
@@ -341,13 +428,40 @@ export default function Cars() {
   };
   const handleApplyFilters = () => {
     const nextFilters = { ...draftFilters };
-    const nextPickupDateTime =
-      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
-    const nextDropoffDateTime =
-      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
-    nextFilters.pickupDateTime = nextPickupDateTime;
-    nextFilters.dropoffDateTime = nextDropoffDateTime;
+    const normalizedPickupDate = clampDateToMin(pickupDate, today);
+    const nextMinDropoffDate = resolveMinDropoffDate(
+      normalizedPickupDate,
+      today
+    );
+    const normalizedDropoffDate = clampDateToMin(
+      dropoffDate,
+      nextMinDropoffDate
+    );
+    const normalizedPickupTime = normalizeTimeTo24h(pickupTime);
+    const normalizedDropoffTime = normalizeTimeTo24h(dropoffTime);
+    const nextStartingDate =
+      normalizedPickupDate && normalizedPickupTime
+        ? `${normalizedPickupDate} ${normalizedPickupTime}`
+        : "";
+    const nextEndingDate =
+      normalizedDropoffDate && normalizedDropoffTime
+        ? `${normalizedDropoffDate} ${normalizedDropoffTime}`
+        : "";
+    nextFilters.startingDate = nextStartingDate;
+    nextFilters.endingDate = nextEndingDate;
     setFilters(nextFilters);
+  };
+  const handlePickupDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, today);
+    setPickupDate(nextValue);
+    const nextMinDropoff = resolveMinDropoffDate(nextValue, today);
+    if (dropoffDate && dropoffDate < nextMinDropoff) {
+      setDropoffDate(nextMinDropoff);
+    }
+  };
+  const handleDropoffDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, minDropoffDate);
+    setDropoffDate(nextValue);
   };
 
   useEffect(() => {
@@ -412,13 +526,16 @@ export default function Cars() {
         if (maxPrice) {
           queryParams.set("maxPrice", maxPrice);
         }
-        if (pickupDateTime) {
-          queryParams.set("pickupDateTime", pickupDateTime);
+        const formattedStartingDate = formatRequestDateTime(startingDate);
+        if (formattedStartingDate) {
+          queryParams.set("startingDate", formattedStartingDate);
         }
-        if (dropoffDateTime) {
-          queryParams.set("dropoffDateTime", dropoffDateTime);
+        const formattedEndingDate = formatRequestDateTime(endingDate);
+        if (formattedEndingDate) {
+          queryParams.set("endingDate", formattedEndingDate);
         }
-        const response = await fetch(`${API_URL}?${queryParams.toString()}`, {
+        const queryString = queryParams.toString().replace(/\+/g, "%20");
+        const response = await fetch(`${API_URL}?${queryString}`, {
           headers: getInventoryApiHeaders(),
         });
         if (!response.ok) {
@@ -483,8 +600,8 @@ export default function Cars() {
     manufactureYear,
     minPrice,
     maxPrice,
-    pickupDateTime,
-    dropoffDateTime,
+    startingDate,
+    endingDate,
   ]);
 
   const minPriceValue =
@@ -598,9 +715,8 @@ export default function Cars() {
                             <input
                               type="date"
                               value={pickupDate}
-                              onChange={(event) =>
-                                setPickupDate(event.target.value)
-                              }
+                              min={today}
+                              onChange={handlePickupDateChange}
                               placeholder={t("Pickup date")}
                             />
                           </div>
@@ -636,9 +752,8 @@ export default function Cars() {
                             <input
                               type="date"
                               value={dropoffDate}
-                              onChange={(event) =>
-                                setDropoffDate(event.target.value)
-                              }
+                              min={minDropoffDate}
+                              onChange={handleDropoffDateChange}
                               placeholder={t("Drop-off date")}
                             />
                           </div>

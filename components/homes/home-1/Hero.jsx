@@ -16,6 +16,18 @@ const toLocalInputDate = (date) => {
   return localDate.toISOString().slice(0, 10);
 };
 
+const getTodayInputDate = () => toLocalInputDate(new Date());
+
+const clampDateToMin = (value, minDate) => {
+  if (!value) {
+    return "";
+  }
+  return value < minDate ? minDate : value;
+};
+
+const resolveMinDropoffDate = (pickupDate, today) =>
+  pickupDate && pickupDate >= today ? pickupDate : today;
+
 const getDefaultPickupDate = () => {
   const tomorrow = addDays(new Date(), 1);
   return toLocalInputDate(tomorrow);
@@ -37,6 +49,11 @@ export default function Hero() {
   const [pickupTime, setPickupTime] = useState("12:00");
   const [dropoffDate, setDropoffDate] = useState(getDefaultDropoffDate);
   const [dropoffTime, setDropoffTime] = useState("12:00");
+  const today = useMemo(() => getTodayInputDate(), []);
+  const minDropoffDate = useMemo(
+    () => resolveMinDropoffDate(pickupDate, today),
+    [pickupDate, today]
+  );
   const brandName = "Luxar";
   const heroTitle = t(
     "Welcome to Luxar Rent a Car - Leading Car Rental in Montenegro"
@@ -103,23 +120,36 @@ export default function Hero() {
   const dateTimeSearchHref = useMemo(() => {
     const params = new URLSearchParams();
     const pickupDateTime =
-      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
+      pickupDate && pickupTime ? `${pickupDate} ${pickupTime}` : "";
     const dropoffDateTime =
-      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
+      dropoffDate && dropoffTime ? `${dropoffDate} ${dropoffTime}` : "";
     if (pickupDateTime) {
-      params.set("pickupDateTime", pickupDateTime);
+      params.set("startingDate", pickupDateTime);
     }
     if (dropoffDateTime) {
-      params.set("dropoffDateTime", dropoffDateTime);
+      params.set("endingDate", dropoffDateTime);
     }
     const query = params.toString();
-    return query ? `/cars?${query}` : "/cars";
+    const normalizedQuery = query.replace(/\+/g, "%20");
+    return normalizedQuery ? `/cars?${normalizedQuery}` : "/cars";
   }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
   const handlePickerClick = (event) => {
     const input = event.currentTarget;
     if (typeof input?.showPicker === "function") {
       input.showPicker();
     }
+  };
+  const handlePickupDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, today);
+    setPickupDate(nextValue);
+    const nextMinDropoff = resolveMinDropoffDate(nextValue, today);
+    if (dropoffDate && dropoffDate < nextMinDropoff) {
+      setDropoffDate(nextMinDropoff);
+    }
+  };
+  const handleDropoffDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, minDropoffDate);
+    setDropoffDate(nextValue);
   };
 
   return (
@@ -220,7 +250,8 @@ export default function Hero() {
                         id="pickupDate"
                         type="date"
                         value={pickupDate}
-                        onChange={(e) => setPickupDate(e.target.value)}
+                        min={today}
+                        onChange={handlePickupDateChange}
                         onClick={handlePickerClick}
                         aria-label={t("Pickup date")}
                         placeholder={t("Pickup date")}
@@ -265,7 +296,8 @@ export default function Hero() {
                         id="dropoffDate"
                         type="date"
                         value={dropoffDate}
-                        onChange={(e) => setDropoffDate(e.target.value)}
+                        min={minDropoffDate}
+                        onChange={handleDropoffDateChange}
                         onClick={handlePickerClick}
                         aria-label={t("Drop-off date")}
                         placeholder={t("Drop-off date")}

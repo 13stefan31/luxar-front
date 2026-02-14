@@ -10,6 +10,8 @@ const FILTER_KEYS = [
   "manufactureYear",
   "minPrice",
   "maxPrice",
+  "startingDate",
+  "endingDate",
   "pickupDateTime",
   "dropoffDateTime",
 ];
@@ -20,6 +22,13 @@ const getFilterValue = (searchParams, key) => {
   }
   const value = searchParams.get(key);
   return value ? value : "";
+};
+const getDateFilterValue = (searchParams, primaryKey, legacyKey) => {
+  const primaryValue = getFilterValue(searchParams, primaryKey);
+  if (primaryValue) {
+    return primaryValue;
+  }
+  return getFilterValue(searchParams, legacyKey);
 };
 
 export function useCarFilters() {
@@ -35,8 +44,16 @@ export function useCarFilters() {
       manufactureYear: getFilterValue(searchParams, "manufactureYear"),
       minPrice: getFilterValue(searchParams, "minPrice"),
       maxPrice: getFilterValue(searchParams, "maxPrice"),
-      pickupDateTime: getFilterValue(searchParams, "pickupDateTime"),
-      dropoffDateTime: getFilterValue(searchParams, "dropoffDateTime"),
+      startingDate: getDateFilterValue(
+        searchParams,
+        "startingDate",
+        "pickupDateTime"
+      ),
+      endingDate: getDateFilterValue(
+        searchParams,
+        "endingDate",
+        "dropoffDateTime"
+      ),
     }),
     [searchParams]
   );
@@ -46,6 +63,12 @@ export function useCarFilters() {
       const params = new URLSearchParams(
         searchParams ? searchParams.toString() : ""
       );
+      if ("startingDate" in (updates || {})) {
+        params.delete("pickupDateTime");
+      }
+      if ("endingDate" in (updates || {})) {
+        params.delete("dropoffDateTime");
+      }
       Object.entries(updates || {}).forEach(([key, value]) => {
         if (!FILTER_KEYS.includes(key)) {
           return;
@@ -57,7 +80,8 @@ export function useCarFilters() {
         }
       });
       const query = params.toString();
-      const nextUrl = query ? `${pathname}?${query}` : pathname;
+      const normalizedQuery = query.replace(/\+/g, "%20");
+      const nextUrl = normalizedQuery ? `${pathname}?${normalizedQuery}` : pathname;
       router.replace(nextUrl, { scroll: false });
     },
     [pathname, router, searchParams]
@@ -69,7 +93,8 @@ export function useCarFilters() {
     );
     FILTER_KEYS.forEach((key) => params.delete(key));
     const query = params.toString();
-    const nextUrl = query ? `${pathname}?${query}` : pathname;
+    const normalizedQuery = query.replace(/\+/g, "%20");
+    const nextUrl = normalizedQuery ? `${pathname}?${normalizedQuery}` : pathname;
     router.replace(nextUrl, { scroll: false });
   }, [pathname, router, searchParams]);
 

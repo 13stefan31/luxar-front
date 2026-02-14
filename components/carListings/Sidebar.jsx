@@ -5,13 +5,79 @@ import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 import { useCarFilters } from "./useCarFilters";
 
+const pad2 = (value) => String(value).padStart(2, "0");
+const normalizeTimeTo24h = (value) => {
+  if (!value) {
+    return "";
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return "";
+  }
+  const ampmMatch = raw.match(
+    /^\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])\s*$/
+  );
+  if (ampmMatch) {
+    let hours = Number(ampmMatch[1]);
+    const minutes = Number(ampmMatch[2] ?? "0");
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      return raw;
+    }
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+      return raw;
+    }
+    const isPm = ampmMatch[3].toLowerCase() === "pm";
+    if (hours === 12) {
+      hours = isPm ? 12 : 0;
+    } else if (isPm) {
+      hours += 12;
+    }
+    return `${pad2(hours)}:${pad2(minutes)}`;
+  }
+  const timeMatch = raw.match(/^\s*(\d{1,2})(?::(\d{2}))?/);
+  if (!timeMatch) {
+    return raw;
+  }
+  const hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2] ?? "0");
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return raw;
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return raw;
+  }
+  return `${pad2(hours)}:${pad2(minutes)}`;
+};
 const splitDateTime = (value) => {
   if (!value) {
     return { date: "", time: "" };
   }
-  const [date, time] = String(value).split("T");
-  return { date: date || "", time: time || "" };
+  const raw = String(value).trim();
+  if (!raw) {
+    return { date: "", time: "" };
+  }
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](.+))?$/);
+  if (!match) {
+    return { date: raw, time: "" };
+  }
+  const date = match[1] || "";
+  const time = normalizeTimeTo24h(match[2] || "");
+  return { date, time };
 };
+const toLocalInputDate = (date) => {
+  const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localDate = new Date(date.getTime() - tzOffsetMs);
+  return localDate.toISOString().slice(0, 10);
+};
+const getTodayInputDate = () => toLocalInputDate(new Date());
+const clampDateToMin = (value, minDate) => {
+  if (!value) {
+    return "";
+  }
+  return value < minDate ? minDate : value;
+};
+const resolveMinDropoffDate = (pickupDate, today) =>
+  pickupDate && pickupDate >= today ? pickupDate : today;
 export default function Sidebar() {
   const { t } = useLanguage();
   const { filters, setFilters } = useCarFilters();
@@ -20,16 +86,30 @@ export default function Sidebar() {
   const [pickupTime, setPickupTime] = useState("");
   const [dropoffDate, setDropoffDate] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
-  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.minPrice}|${filters.maxPrice}|${filters.pickupDateTime}|${filters.dropoffDateTime}`;
+  const today = useMemo(() => getTodayInputDate(), []);
+  const minDropoffDate = useMemo(
+    () => resolveMinDropoffDate(pickupDate, today),
+    [pickupDate, today]
+  );
+  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.minPrice}|${filters.maxPrice}|${filters.startingDate}|${filters.endingDate}`;
   useEffect(() => {
     setDraftFilters(filters);
-    const nextPickup = splitDateTime(filters.pickupDateTime);
-    const nextDropoff = splitDateTime(filters.dropoffDateTime);
-    setPickupDate(nextPickup.date);
+    const nextPickup = splitDateTime(filters.startingDate);
+    const nextDropoff = splitDateTime(filters.endingDate);
+    const normalizedPickupDate = clampDateToMin(nextPickup.date, today);
+    const nextMinDropoffDate = resolveMinDropoffDate(
+      normalizedPickupDate,
+      today
+    );
+    const normalizedDropoffDate = clampDateToMin(
+      nextDropoff.date,
+      nextMinDropoffDate
+    );
+    setPickupDate(normalizedPickupDate);
     setPickupTime(nextPickup.time);
-    setDropoffDate(nextDropoff.date);
+    setDropoffDate(normalizedDropoffDate);
     setDropoffTime(nextDropoff.time);
-  }, [filterKey]);
+  }, [filterKey, today]);
   const {
     engineType: draftEngineType,
     transmissionType: draftTransmissionType,
@@ -85,13 +165,40 @@ export default function Sidebar() {
   };
   const handleApplyFilters = () => {
     const nextFilters = { ...draftFilters };
-    const pickupDateTime =
-      pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : "";
-    const dropoffDateTime =
-      dropoffDate && dropoffTime ? `${dropoffDate}T${dropoffTime}` : "";
-    nextFilters.pickupDateTime = pickupDateTime;
-    nextFilters.dropoffDateTime = dropoffDateTime;
+    const normalizedPickupDate = clampDateToMin(pickupDate, today);
+    const nextMinDropoffDate = resolveMinDropoffDate(
+      normalizedPickupDate,
+      today
+    );
+    const normalizedDropoffDate = clampDateToMin(
+      dropoffDate,
+      nextMinDropoffDate
+    );
+    const normalizedPickupTime = normalizeTimeTo24h(pickupTime);
+    const normalizedDropoffTime = normalizeTimeTo24h(dropoffTime);
+    const startingDate =
+      normalizedPickupDate && normalizedPickupTime
+        ? `${normalizedPickupDate} ${normalizedPickupTime}`
+        : "";
+    const endingDate =
+      normalizedDropoffDate && normalizedDropoffTime
+        ? `${normalizedDropoffDate} ${normalizedDropoffTime}`
+        : "";
+    nextFilters.startingDate = startingDate;
+    nextFilters.endingDate = endingDate;
     setFilters(nextFilters);
+  };
+  const handlePickupDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, today);
+    setPickupDate(nextValue);
+    const nextMinDropoff = resolveMinDropoffDate(nextValue, today);
+    if (dropoffDate && dropoffDate < nextMinDropoff) {
+      setDropoffDate(nextMinDropoff);
+    }
+  };
+  const handleDropoffDateChange = (event) => {
+    const nextValue = clampDateToMin(event.target.value, minDropoffDate);
+    setDropoffDate(nextValue);
   };
   return (
     <div className="wrap-fixed-sidebar">
@@ -126,7 +233,8 @@ export default function Sidebar() {
                         <input
                           type="date"
                           value={pickupDate}
-                          onChange={(event) => setPickupDate(event.target.value)}
+                          min={today}
+                          onChange={handlePickupDateChange}
                           placeholder={t("Pickup date")}
                         />
                       </div>
@@ -160,7 +268,8 @@ export default function Sidebar() {
                         <input
                           type="date"
                           value={dropoffDate}
-                          onChange={(event) => setDropoffDate(event.target.value)}
+                          min={minDropoffDate}
+                          onChange={handleDropoffDateChange}
                           placeholder={t("Drop-off date")}
                         />
                       </div>
