@@ -4,16 +4,39 @@ import Link from "@/components/common/LocalizedLink";
 import SelectComponent from "@/components/common/SelectComponent";
 import { useLanguage } from "@/context/LanguageContext";
 
+const addDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const toLocalInputDate = (date) => {
+  const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localDate = new Date(date.getTime() - tzOffsetMs);
+  return localDate.toISOString().slice(0, 10);
+};
+
+const getDefaultPickupDate = () => {
+  const tomorrow = addDays(new Date(), 1);
+  return toLocalInputDate(tomorrow);
+};
+
+const getDefaultDropoffDate = () => {
+  const tomorrow = addDays(new Date(), 1);
+  const dropoff = addDays(tomorrow, 5);
+  return toLocalInputDate(dropoff);
+};
+
 export default function Hero() {
   const { t } = useLanguage();
   const [engineType, setEngineType] = useState("");
   const [transmissionType, setTransmissionType] = useState("");
   const [fuelType, setFuelType] = useState("");
   const [manufactureYear, setManufactureYear] = useState("");
-  const [pickupDate, setPickupDate] = useState("");
-  const [pickupTime, setPickupTime] = useState("");
-  const [dropoffDate, setDropoffDate] = useState("");
-  const [dropoffTime, setDropoffTime] = useState("");
+  const [pickupDate, setPickupDate] = useState(getDefaultPickupDate);
+  const [pickupTime, setPickupTime] = useState("12:00");
+  const [dropoffDate, setDropoffDate] = useState(getDefaultDropoffDate);
+  const [dropoffTime, setDropoffTime] = useState("12:00");
   const brandName = "Luxar";
   const heroTitle = t(
     "Welcome to Luxar Rent a Car - Leading Car Rental in Montenegro"
@@ -92,6 +115,12 @@ export default function Hero() {
     const query = params.toString();
     return query ? `/cars?${query}` : "/cars";
   }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
+  const handlePickerClick = (event) => {
+    const input = event.currentTarget;
+    if (typeof input?.showPicker === "function") {
+      input.showPicker();
+    }
+  };
 
   return (
     <section className="boxcar-banner-section-v1">
@@ -192,6 +221,7 @@ export default function Hero() {
                         type="date"
                         value={pickupDate}
                         onChange={(e) => setPickupDate(e.target.value)}
+                        onClick={handlePickerClick}
                         aria-label={t("Pickup date")}
                         placeholder={t("Pickup date")}
                       />
@@ -213,8 +243,10 @@ export default function Hero() {
                       <input
                         id="pickupTime"
                         type="time"
+                        step="1800"
                         value={pickupTime}
                         onChange={(e) => setPickupTime(e.target.value)}
+                        onClick={handlePickerClick}
                         aria-label={t("Pickup time")}
                         placeholder={t("Pickup time")}
                       />
@@ -234,6 +266,7 @@ export default function Hero() {
                         type="date"
                         value={dropoffDate}
                         onChange={(e) => setDropoffDate(e.target.value)}
+                        onClick={handlePickerClick}
                         aria-label={t("Drop-off date")}
                         placeholder={t("Drop-off date")}
                       />
@@ -255,8 +288,10 @@ export default function Hero() {
                       <input
                         id="dropoffTime"
                         type="time"
+                        step="1800"
                         value={dropoffTime}
                         onChange={(e) => setDropoffTime(e.target.value)}
+                        onClick={handlePickerClick}
                         aria-label={t("Drop-off time")}
                         placeholder={t("Drop-off time")}
                       />

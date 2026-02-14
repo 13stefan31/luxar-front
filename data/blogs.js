@@ -5,8 +5,9 @@ export const blogPosts = [
     author: "Admin",
     date: "11.02.2026",
     slug: "montenegro-road-trip",
-    src: "/images/banner/mne.jpeg",
-    imageSrc: "/images/banner/mne.jpeg",
+    description: "Why public transport will limit you + best regions to explore by car",
+    src: "/images/banner/IMG_0859.JPG",
+    imageSrc: "/images/banner/IMG_0859.JPG",
     wowDelay: "0ms",
     delay: "100ms",
   },
@@ -15,6 +16,8 @@ export const blogPosts = [
     title: "How to choose the ideal vehicle for a 2025 trip",
     author: "Admin",
     date: "12.01.2025",
+    description:
+      "A quick guide to picking the right size, comfort, and budget for your 2025 journey.",
     src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&h=800&q=80",
     imageSrc: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&h=800&q=80",
     wowDelay: "100ms",
@@ -25,6 +28,8 @@ export const blogPosts = [
     title: "5 best tips for cheaper car rentals — save smart",
     author: "Admin",
     date: "08.01.2025",
+    description:
+      "Cut rental costs with timing, comparison tips, and smart add-ons that keep prices low.",
     src: "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1200&h=800&q=80",
     imageSrc: "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1200&h=800&q=80",
     wowDelay: "200ms",
@@ -35,6 +40,8 @@ export const blogPosts = [
     title: "Is full insurance necessary when renting?",
     author: "Admin",
     date: "02.01.2025",
+    description:
+      "Understand deductibles, coverage options, and when full insurance makes sense.",
     src: "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&h=800&q=80",
     imageSrc: "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&h=800&q=80",
     wowDelay: "300ms",

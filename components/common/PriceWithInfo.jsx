@@ -2,23 +2,23 @@
 import React, { useId } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 
-const DEFAULT_FALLBACK = 50;
-
 const normalizePriceValue = (value) => {
-  if (value === null || value === undefined) {
-    return 0;
+  if (value === null || value === undefined || value === "") {
+    return null;
   }
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+    return Number.isFinite(value) ? value : null;
   }
   const cleaned = String(value).replace(/[^0-9.]/g, "");
+  if (!cleaned) {
+    return null;
+  }
   const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 export default function PriceWithInfo({
   value,
-  fallback = DEFAULT_FALLBACK,
   className = "",
   showInfo = true,
   currency = "€",
@@ -26,17 +26,17 @@ export default function PriceWithInfo({
   const { t } = useLanguage();
   const translate = typeof t === "function" ? t : (text) => text;
   const normalized = normalizePriceValue(value);
-  const displayPrice = normalized ? normalized : fallback;
+  const hasPrice = normalized !== null;
+  const noPriceLabel = translate("Price on request");
   const infoLabel = translate("Price varies by number of days");
   const tooltipId = useId();
 
   return (
     <span className={`price-with-info ${className}`.trim()}>
       <span className="price-amount">
-        {currency}
-        {displayPrice}
+        {hasPrice ? `${currency}${normalized}` : noPriceLabel}
       </span>
-      {showInfo ? (
+      {showInfo && hasPrice ? (
         <span
           className="price-info"
           aria-label={infoLabel}

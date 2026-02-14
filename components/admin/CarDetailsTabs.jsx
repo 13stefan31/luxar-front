@@ -10,6 +10,8 @@ import {
   adminDeleteCarInstance,
   adminActivateCarInstance,
   adminCreateCarInstance,
+  adminDeleteCarImage,
+  adminDeleteCarInstanceImage,
   adminCreateCarPrices,
   adminGetCarPrices,
   adminUpdateCarPrice,
@@ -175,6 +177,32 @@ const resolveRemoteImagePath = (image) => {
   return normalized || raw;
 };
 
+const isDeletableImageUrl = (value) => {
+  if (!value) {
+    return false;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.startsWith("blob:") || normalized.startsWith("data:")) {
+    return false;
+  }
+  if (normalized.startsWith("/images/")) {
+    return false;
+  }
+  return true;
+};
+
+const extractImageFileName = (value) => {
+  if (!value) {
+    return "";
+  }
+  const cleaned = String(value).split("?")[0].split("#")[0];
+  const parts = cleaned.split("/");
+  return parts[parts.length - 1] || "";
+};
+
 const normalizeImageList = (images) => {
   if (!Array.isArray(images)) {
     return [];
@@ -261,6 +289,67 @@ const normalizeRemoteDate = (value) => {
   }
   return "";
 };
+
+const pickFirstValue = (source, keys) => {
+  if (!source || !Array.isArray(keys)) {
+    return undefined;
+  }
+  for (const key of keys) {
+    if (!key) {
+      continue;
+    }
+    const value = source[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+  return undefined;
+};
+
+const resolvePricePeriodDate = (item, keys) =>
+  normalizeRemoteDate(pickFirstValue(item, keys));
+
+const resolvePricePeriodTiers = (item) => {
+  const candidates = [
+    item?.tiers,
+    item?.priceTiers,
+    item?.price_tiers,
+    item?.levels,
+    item?.items,
+  ];
+  return candidates.find((value) => Array.isArray(value)) ?? [];
+};
+
+const normalizePricePeriod = (item) => ({
+  id: item?.id ?? item?.priceId ?? item?.price_id ?? item?.uuid,
+  carId:
+    item?.carId ??
+    item?.car_id ??
+    item?.vehicleId ??
+    item?.vehicle_id ??
+    item?.car?.id ??
+    item?.vehicle?.id,
+  startingDate: resolvePricePeriodDate(item, [
+    "startingDate",
+    "startDate",
+    "start_date",
+    "fromDate",
+    "dateFrom",
+    "validFrom",
+    "from",
+  ]),
+  endingDate: resolvePricePeriodDate(item, [
+    "endingDate",
+    "endDate",
+    "end_date",
+    "toDate",
+    "dateTo",
+    "validTo",
+    "until",
+    "to",
+  ]),
+  tiers: resolvePricePeriodTiers(item),
+});
 
 const toDayNumber = (value) => {
   const parsed = parseLocalDate(value);
@@ -393,12 +482,14 @@ export default function CarDetailsTabs({ carId }) {
   const [galleryFiles, setGalleryFiles] = useState([]);
   const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [existingGalleryImages, setExistingGalleryImages] = useState([]);
+  const [carImageDeleting, setCarImageDeleting] = useState({});
   const [instanceCoverFiles, setInstanceCoverFiles] = useState({});
   const [instanceCoverPreviews, setInstanceCoverPreviews] = useState({});
   const [instanceGalleryFiles, setInstanceGalleryFiles] = useState({});
   const [instanceGalleryPreviews, setInstanceGalleryPreviews] = useState({});
   const [instanceExistingCovers, setInstanceExistingCovers] = useState({});
   const [instanceExistingGalleries, setInstanceExistingGalleries] = useState({});
+  const [instanceImageDeleting, setInstanceImageDeleting] = useState({});
   const variationRefs = useRef({});
   const registrationInputRefs = useRef({});
   const imageObjectUrlRef = useRef("");
@@ -445,6 +536,8 @@ export default function CarDetailsTabs({ carId }) {
   const [calendarMonth, setCalendarMonth] = useState(() =>
     startOfMonth(new Date())
   );
+  const todayLocalIso = formatLocalDate(new Date());
+  const todayDayNumber = toDayNumber(todayLocalIso);
 
   useEffect(() => {
     if (!carId) {
@@ -790,13 +883,20 @@ export default function CarDetailsTabs({ carId }) {
     if (!iso) {
       return;
     }
+    const selectedNum = toDayNumber(iso);
+    if (
+      Number.isFinite(selectedNum) &&
+      Number.isFinite(todayDayNumber) &&
+      selectedNum < todayDayNumber
+    ) {
+      return;
+    }
     setPriceErrors((prev) => ({ ...prev, startDate: "", endDate: "" }));
     setPriceRange((prev) => {
       if (!prev.startDate || prev.endDate) {
         return { startDate: iso, endDate: "" };
       }
       const startNum = toDayNumber(prev.startDate);
-      const selectedNum = toDayNumber(iso);
       if (!Number.isFinite(startNum) || !Number.isFinite(selectedNum)) {
         return { startDate: iso, endDate: "" };
       }
@@ -859,8 +959,24 @@ export default function CarDetailsTabs({ carId }) {
     if (!startDate) {
       errors.startDate = "Odaberite početni datum.";
     }
+    if (
+      startDate &&
+      Number.isFinite(startNum) &&
+      Number.isFinite(todayDayNumber) &&
+      startNum < todayDayNumber
+    ) {
+      errors.startDate = "Početni datum ne može biti u prošlosti.";
+    }
     if (!endDate) {
       errors.endDate = "Odaberite krajnji datum.";
+    }
+    if (
+      endDate &&
+      Number.isFinite(endNum) &&
+      Number.isFinite(todayDayNumber) &&
+      endNum < todayDayNumber
+    ) {
+      errors.endDate = "Krajnji datum ne može biti u prošlosti.";
     }
     if (
       startDate &&
@@ -1335,17 +1451,23 @@ export default function CarDetailsTabs({ carId }) {
     setPriceLoading(true);
     setPriceLoadError("");
     try {
-      const payload = await adminGetCarPrices(carId, { signal });
-      const rawItems = payload?.data || payload?.items || payload?.prices || [];
-      const items = Array.isArray(rawItems) ? rawItems : [];
+      const payload = await adminGetCarPrices(carId, { signal, limit: 200 });
+      const sources = [
+        payload?.data?.items,
+        payload?.data?.prices,
+        payload?.data?.results,
+        payload?.data?.data,
+        payload?.data?.["hydra:member"],
+        payload?.["hydra:member"],
+        payload?.data,
+        payload?.items,
+        payload?.prices,
+        payload?.results,
+        payload,
+      ];
+      const items = sources.find((source) => Array.isArray(source)) ?? [];
       const normalized = items
-        .map((item) => ({
-          id: item?.id,
-          carId: item?.carId,
-          startingDate: normalizeRemoteDate(item?.startingDate),
-          endingDate: normalizeRemoteDate(item?.endingDate),
-          tiers: Array.isArray(item?.tiers) ? item.tiers : [],
-        }))
+        .map(normalizePricePeriod)
         .filter((item) => item.startingDate && item.endingDate)
         .sort(
           (a, b) =>
@@ -1743,7 +1865,6 @@ export default function CarDetailsTabs({ carId }) {
           engineType: edit.engineType,
           transmission: edit.transmission,
           fuelType: edit.fuelType,
-          price: edit.price,
           status: edit.status,
           additionalEquipment: edit.additionalEquipment,
           coverImage: instanceCoverFiles[variationKey],
@@ -1804,7 +1925,6 @@ export default function CarDetailsTabs({ carId }) {
       engineType: "",
       fuelType: "",
       transmission: "",
-      price: "",
       status: "draft",
       additionalEquipment: {},
       isDeleted: false,
@@ -1862,6 +1982,119 @@ export default function CarDetailsTabs({ carId }) {
       ...prev,
       [variationKey]: previews,
     }));
+  };
+
+  const handleCarImageDelete = async (imageUrl, { isCover = false } = {}) => {
+    const imageId = extractImageFileName(imageUrl);
+    if (!imageId || carImageDeleting[imageId]) {
+      return;
+    }
+    const confirmed =
+      typeof window !== "undefined"
+        ? window.confirm("Da li ste sigurni da želite da obrišete sliku?")
+        : false;
+    if (!confirmed) {
+      return;
+    }
+    setCarImageDeleting((prev) => ({ ...prev, [imageId]: true }));
+    try {
+      await adminDeleteCarImage(imageId);
+      toast.success("Slika je obrisana.");
+      setExistingGalleryImages((prev) =>
+        prev.filter((image) => image !== imageUrl)
+      );
+      if (isCover || imagePreview === imageUrl) {
+        setImagePreview("");
+        setCoverFallback("");
+        setImageName("");
+      }
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri brisanju slike.");
+    } finally {
+      setCarImageDeleting((prev) => {
+        const next = { ...prev };
+        delete next[imageId];
+        return next;
+      });
+    }
+  };
+
+  const handleInstanceImageDelete = async (
+    variationKey,
+    imageUrl,
+    { isCover = false } = {}
+  ) => {
+    const imageId = extractImageFileName(imageUrl);
+    if (!variationKey || !imageId || instanceImageDeleting[imageId]) {
+      return;
+    }
+    const confirmed =
+      typeof window !== "undefined"
+        ? window.confirm("Da li ste sigurni da želite da obrišete sliku?")
+        : false;
+    if (!confirmed) {
+      return;
+    }
+    setInstanceImageDeleting((prev) => ({ ...prev, [imageId]: true }));
+    try {
+      await adminDeleteCarInstanceImage(imageId);
+      toast.success("Slika je obrisana.");
+      if (isCover) {
+        setInstanceExistingCovers((prev) => {
+          const next = { ...prev };
+          if (next[variationKey] === imageUrl) {
+            delete next[variationKey];
+          }
+          return next;
+        });
+        setInstanceCoverPreviews((prev) => {
+          const next = { ...prev };
+          if (next[variationKey] === imageUrl) {
+            delete next[variationKey];
+          }
+          return next;
+        });
+      } else {
+        setInstanceExistingGalleries((prev) => {
+          const next = { ...prev };
+          const current = Array.isArray(next[variationKey])
+            ? next[variationKey]
+            : [];
+          next[variationKey] = current.filter((img) => img !== imageUrl);
+          return next;
+        });
+      }
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      const isUnauthorized =
+        status === 401 ||
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("jwt token not found");
+      if (isUnauthorized) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      toast.error(err?.message || "Greška pri brisanju slike.");
+    } finally {
+      setInstanceImageDeleting((prev) => {
+        const next = { ...prev };
+        delete next[imageId];
+        return next;
+      });
+    }
   };
 
   if (loading) {
@@ -1993,7 +2226,9 @@ export default function CarDetailsTabs({ carId }) {
                       }`}
                     >
                       {imagePreview ? (
-                        <img src={imagePreview} alt="Slika vozila" />
+                        <>
+                          <img src={imagePreview} alt="Slika vozila" />
+                        </>
                       ) : (
                         <span>Dodaj sliku</span>
                       )}
@@ -2047,14 +2282,36 @@ export default function CarDetailsTabs({ carId }) {
                   <div className="existing-images">
                     <p className="image-filename">Postojeće slike:</p>
                     <div className="image-preview-grid">
-                      {existingGalleryImages.map((image, index) => (
-                        <div
-                          className="image-preview has-image"
-                          key={`${image}-${index}`}
-                        >
-                          <img src={image} alt={`Postojeća slika ${index + 1}`} />
-                        </div>
-                      ))}
+                      {existingGalleryImages.map((image, index) => {
+                        const imageId = extractImageFileName(image);
+                        return (
+                          <div
+                            className="image-preview has-image"
+                            key={`${image}-${index}`}
+                          >
+                            <img
+                              src={image}
+                              alt={`Postojeća slika ${index + 1}`}
+                            />
+                            {imageId && isDeletableImageUrl(image) ? (
+                              <button
+                                type="button"
+                                className="image-remove"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleCarImageDelete(image);
+                                }}
+                                disabled={carImageDeleting[imageId]}
+                                aria-label="Obriši sliku"
+                                title="Obriši sliku"
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2417,6 +2674,9 @@ export default function CarDetailsTabs({ carId }) {
                     instanceExistingGalleries[variationKey] || [];
                   const variationThumb =
                     variationCoverPreview || existingGallery[0] || "";
+                  const variationCoverId = extractImageFileName(
+                    variationCoverPreview
+                  );
 
                   return (
                     <div
@@ -2514,10 +2774,12 @@ export default function CarDetailsTabs({ carId }) {
                                     }`}
                                   >
                                     {variationCoverPreview ? (
-                                      <img
-                                        src={variationCoverPreview}
-                                        alt="Cover slika varijacije"
-                                      />
+                                      <>
+                                        <img
+                                          src={variationCoverPreview}
+                                          alt="Cover slika varijacije"
+                                        />
+                                      </>
                                     ) : (
                                       <span>Dodaj sliku</span>
                                     )}
@@ -2615,7 +2877,9 @@ export default function CarDetailsTabs({ carId }) {
                             <div className="existing-images">
                               <p className="image-filename">Postojeće slike:</p>
                               <div className="image-preview-grid">
-                                {existingGallery.map((image, index) => (
+                                {existingGallery.map((image, index) => {
+                                  const imageId = extractImageFileName(image);
+                                  return (
                                     <div
                                       className="image-preview has-image"
                                       key={`${image}-${index}`}
@@ -2624,8 +2888,31 @@ export default function CarDetailsTabs({ carId }) {
                                         src={image}
                                         alt={`Postojeća slika ${index + 1}`}
                                       />
+                                      {imageId &&
+                                      isDeletableImageUrl(image) ? (
+                                        <button
+                                          type="button"
+                                          className="image-remove"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            handleInstanceImageDelete(
+                                              variationKey,
+                                              image
+                                            );
+                                          }}
+                                          disabled={
+                                            instanceImageDeleting[imageId]
+                                          }
+                                          aria-label="Obriši sliku"
+                                          title="Obriši sliku"
+                                        >
+                                          ×
+                                        </button>
+                                      ) : null}
                                     </div>
-                                  ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -2851,6 +3138,11 @@ export default function CarDetailsTabs({ carId }) {
                 </div>
                 <div className="calendar-grid">
                   {calendarData.days.map((day) => {
+                    const dayNumber = day.iso ? toDayNumber(day.iso) : NaN;
+                    const isPast =
+                      Number.isFinite(dayNumber) &&
+                      Number.isFinite(todayDayNumber) &&
+                      dayNumber < todayDayNumber;
                     const startMatch =
                       priceRange.startDate && day.iso === priceRange.startDate;
                     const endMatch =
@@ -2872,7 +3164,9 @@ export default function CarDetailsTabs({ carId }) {
                       startMatch ? " range-start" : ""
                     }${endMatch ? " range-end" : ""}${
                       hasExisting ? " has-existing" : ""
-                    }${existingOverlap ? " has-overlap" : ""}`;
+                    }${existingOverlap ? " has-overlap" : ""}${
+                      isPast ? " is-past" : ""
+                    }`;
                     const title = hasExisting ? getExistingTitles(day.iso) : "";
 
                     return (
@@ -2881,7 +3175,7 @@ export default function CarDetailsTabs({ carId }) {
                         key={day.key}
                         className={className}
                         onClick={() => handleCalendarSelect(day.iso)}
-                        disabled={!day.isCurrentMonth}
+                        disabled={!day.isCurrentMonth || isPast}
                         title={title}
                       >
                         <span className="day-number">{day.label || ""}</span>
@@ -2923,6 +3217,7 @@ export default function CarDetailsTabs({ carId }) {
                     <input
                       type="date"
                       value={priceRange.startDate}
+                      min={todayLocalIso}
                       onChange={handlePriceRangeInput("startDate")}
                       className={priceErrors.startDate ? "input-invalid" : ""}
                     />
@@ -2937,6 +3232,7 @@ export default function CarDetailsTabs({ carId }) {
                     <input
                       type="date"
                       value={priceRange.endDate}
+                      min={priceRange.startDate || todayLocalIso}
                       onChange={handlePriceRangeInput("endDate")}
                       className={priceErrors.endDate ? "input-invalid" : ""}
                     />

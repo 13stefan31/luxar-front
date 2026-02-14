@@ -1498,8 +1498,25 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   .btn-box
   .price-wrap
   .current-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 20px;
   line-height: 1.2;
+}
+
+.cars-section-four
+  .inner-box
+  .content-box
+  .btn-box
+  .price-wrap
+  .price-prefix {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-color-dark);
+  opacity: 0.7;
 }
 
 .car-block-three .inner-box .content-box .btn-box small,
@@ -2543,6 +2560,7 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   text-transform: uppercase;
   letter-spacing: 0.08em;
   overflow: hidden;
+  position: relative;
 }
 
 .car-details-tabs .image-preview.has-image {
@@ -2554,6 +2572,30 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.car-details-tabs .image-preview .image-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(17, 24, 39, 0.8);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.car-details-tabs .image-preview .image-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .car-details-tabs .image-upload input[type="file"] {
@@ -2943,6 +2985,12 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
 .car-details-tabs .calendar-day:disabled {
   opacity: 1;
   cursor: default;
+}
+
+.car-details-tabs .calendar-day.is-past {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
 }
 
 .car-details-tabs .calendar-day:focus-visible {
@@ -4162,8 +4210,22 @@ a:hover {
   .form-tab-pane
   form.hero-datetime-form
   input[type="time"]::-webkit-calendar-picker-indicator {
-  opacity: 0;
-  display: none;
+  opacity: 1;
+  display: block;
+  cursor: pointer;
+}
+
+.boxcar-banner-section-v1
+  .banner-content
+  .form-tab-pane
+  form.hero-datetime-form
+  input[type="date"],
+.boxcar-banner-section-v1
+  .banner-content
+  .form-tab-pane
+  form.hero-datetime-form
+  input[type="time"] {
+  cursor: pointer;
 }
 
 .boxcar-banner-section-v1
@@ -4397,6 +4459,20 @@ a:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .boxcar-banner-section-v1
+    .banner-content
+    .form-tab-pane
+    form.hero-datetime-form
+    input[type="date"]::-webkit-calendar-picker-indicator,
+  .boxcar-banner-section-v1
+    .banner-content
+    .form-tab-pane
+    form.hero-datetime-form
+    input[type="time"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    display: none;
   }
 
   .boxcar-banner-section-v1

@@ -60,6 +60,144 @@ const formatDateForMessage = (value) => {
   return `${day}.${month}.${year}`;
 };
 
+const normalizeTextValue = (value) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value).trim();
+};
+
+const toApiDateTime = (date, time) => {
+  const safeDate = normalizeTextValue(date);
+  const safeTime = normalizeTextValue(time);
+  if (!safeDate || !safeTime) {
+    return "";
+  }
+  return `${safeDate} ${safeTime}`;
+};
+
+const parseNumericValue = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().replace(/[^\d.,-]/g, "").replace(",", ".");
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const resolveCalculatedPrice = (payload) => {
+  const candidates = [
+    payload?.data?.price,
+    payload?.data?.totalPrice,
+    payload?.data?.total_price,
+    payload?.data?.amount,
+    payload?.data?.total,
+    payload?.price,
+    payload?.totalPrice,
+    payload?.total_price,
+    payload?.amount,
+    payload?.total,
+  ];
+  for (const candidate of candidates) {
+    const parsed = parseNumericValue(candidate);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const resolveCalculatedCurrency = (payload) => {
+  const candidates = [
+    payload?.data?.currency,
+    payload?.data?.currencyCode,
+    payload?.data?.currency_code,
+    payload?.currency,
+    payload?.currencyCode,
+    payload?.currency_code,
+  ];
+  for (const candidate of candidates) {
+    const normalized = normalizeTextValue(candidate);
+    if (normalized) {
+      return normalized.toUpperCase();
+    }
+  }
+  return "EUR";
+};
+
+const formatCalculatedPrice = (amount, currency) => {
+  const safeAmount = Number(amount);
+  if (!Number.isFinite(safeAmount)) {
+    return "";
+  }
+  const rounded =
+    Math.abs(safeAmount % 1) < Number.EPSILON
+      ? safeAmount.toFixed(0)
+      : safeAmount.toFixed(2);
+  const safeCurrency = normalizeTextValue(currency) || "EUR";
+  return `${rounded} ${safeCurrency}`;
+};
+
+const resolveCarPriceCode = (carItem) => {
+  const raw = carItem?.raw || {};
+  const directCode = [
+    raw.code,
+    raw.priceCode,
+    raw.price_code,
+    raw.carPriceCode,
+    raw.car_price_code,
+  ]
+    .map((value) => normalizeTextValue(value))
+    .find(Boolean);
+  if (directCode) {
+    return directCode;
+  }
+
+  const selectedInstanceId = normalizeTextValue(carItem?.instanceUuid);
+  const instanceSources = [];
+  if (raw.instance && typeof raw.instance === "object") {
+    instanceSources.push(raw.instance);
+  }
+  if (Array.isArray(raw.instances)) {
+    instanceSources.push(...raw.instances);
+  }
+  if (Array.isArray(raw.carInstances)) {
+    instanceSources.push(...raw.carInstances);
+  }
+  const matchedInstance = selectedInstanceId
+    ? instanceSources.find((instance) => {
+        const instanceUuid = normalizeTextValue(instance?.uuid);
+        const instanceId = normalizeTextValue(instance?.id);
+        return (
+          instanceUuid === selectedInstanceId || instanceId === selectedInstanceId
+        );
+      })
+    : instanceSources[0];
+
+  if (matchedInstance) {
+    const instanceCode = [
+      matchedInstance?.code,
+      matchedInstance?.priceCode,
+      matchedInstance?.price_code,
+      matchedInstance?.uuid,
+      matchedInstance?.id,
+    ]
+      .map((value) => normalizeTextValue(value))
+      .find(Boolean);
+    if (instanceCode) {
+      return instanceCode;
+    }
+  }
+
+  return selectedInstanceId;
+};
+
 const WHATSAPP_NUMBER =
   process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "38267880066";
 
@@ -77,10 +215,32 @@ export default function Single1({ carItem }) {
   const [message, setMessage] = useState("");
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [priceCheckStatus, setPriceCheckStatus] = useState("idle");
+  const [priceCheckError, setPriceCheckError] = useState("");
+  const [calculatedPrice, setCalculatedPrice] = useState(null);
+  const [calculatedCurrency, setCalculatedCurrency] = useState("EUR");
+  const [checkedRangeKey, setCheckedRangeKey] = useState("");
   const { t } = useLanguage();
   const today = toInputDate(new Date());
   const minDropoffDate = pickupDate || today;
   const detail = carItem?.raw || {};
+  const carPriceCode = resolveCarPriceCode(carItem);
+  const currentDateTimeKey = [
+    carPriceCode,
+    pickupDate,
+    pickupTime,
+    dropoffDate,
+    dropoffTime,
+  ].join("|");
+  const activePriceCheckRef = useRef({
+    key: "",
+    controller: null,
+    seq: 0,
+  });
+  const latestRangeKeyRef = useRef(currentDateTimeKey);
+  latestRangeKeyRef.current = currentDateTimeKey;
+  const canReserve =
+    priceCheckStatus === "success" && checkedRangeKey === currentDateTimeKey;
   const galleryImages = Array.isArray(carItem?.images)
     ? carItem.images
         .map((image) => normalizeInventoryImageUrl(image, ""))
@@ -155,8 +315,161 @@ export default function Single1({ carItem }) {
     };
   }, [closeReservationModal, isReservationModalOpen]);
 
+  useEffect(() => {
+    return () => {
+      const active = activePriceCheckRef.current;
+      if (active?.controller) {
+        active.controller.abort();
+        active.controller = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const active = activePriceCheckRef.current;
+    if (active?.controller) {
+      active.controller.abort();
+      active.controller = null;
+    }
+    if (active) {
+      active.key = "";
+    }
+    setPriceCheckStatus("idle");
+    setPriceCheckError("");
+    setCalculatedPrice(null);
+    setCalculatedCurrency("EUR");
+    setCheckedRangeKey("");
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime, carPriceCode]);
+
+  const handlePriceCheck = useCallback(async () => {
+    const startDateTime = toApiDateTime(pickupDate, pickupTime);
+    const endDateTime = toApiDateTime(dropoffDate, dropoffTime);
+
+    if (!startDateTime || !endDateTime) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(
+        t("Please choose pickup and drop-off date and time first.")
+      );
+      return;
+    }
+
+    const start = new Date(`${pickupDate}T${pickupTime}`);
+    const end = new Date(`${dropoffDate}T${dropoffTime}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(
+        t("Please choose pickup and drop-off date and time first.")
+      );
+      return;
+    }
+    if (!(end > start)) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(t("Drop-off must be after pickup."));
+      return;
+    }
+
+    if (!carPriceCode) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(t("Unable to calculate price for this vehicle right now."));
+      return;
+    }
+
+    setPriceCheckStatus("loading");
+    setPriceCheckError("");
+    setCalculatedPrice(null);
+    setCalculatedCurrency("EUR");
+    setCheckedRangeKey("");
+
+    const active = activePriceCheckRef.current;
+    if (active?.controller) {
+      active.controller.abort();
+    }
+    const controller = new AbortController();
+    const requestSeq = (activePriceCheckRef.current.seq || 0) + 1;
+    activePriceCheckRef.current.seq = requestSeq;
+    activePriceCheckRef.current.controller = controller;
+    activePriceCheckRef.current.key = currentDateTimeKey;
+
+    try {
+      const response = await fetch("/api/car-price/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          code: carPriceCode,
+          startingDate: startDateTime,
+          endingDate: endDateTime,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const errorMessage =
+          payload?.error ||
+          payload?.message ||
+          t("Unable to calculate price for this vehicle right now.");
+        throw new Error(errorMessage);
+      }
+
+      const resolvedPrice = resolveCalculatedPrice(payload);
+      if (resolvedPrice === null) {
+        throw new Error(t("Unable to calculate price for this vehicle right now."));
+      }
+
+      const currentActive = activePriceCheckRef.current;
+      if (
+        currentActive.seq !== requestSeq ||
+        latestRangeKeyRef.current !== currentDateTimeKey
+      ) {
+        return;
+      }
+      setCalculatedPrice(resolvedPrice);
+      setCalculatedCurrency(resolveCalculatedCurrency(payload));
+      setCheckedRangeKey(currentDateTimeKey);
+      setPriceCheckStatus("success");
+      setPriceCheckError("");
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+      const currentActive = activePriceCheckRef.current;
+      if (
+        currentActive.seq !== requestSeq ||
+        latestRangeKeyRef.current !== currentDateTimeKey
+      ) {
+        return;
+      }
+      setPriceCheckStatus("error");
+      setPriceCheckError(
+        error?.message || t("Unable to calculate price for this vehicle right now.")
+      );
+    } finally {
+      const currentActive = activePriceCheckRef.current;
+      if (currentActive.seq === requestSeq) {
+        currentActive.controller = null;
+      }
+    }
+  }, [
+    carPriceCode,
+    currentDateTimeKey,
+    dropoffDate,
+    dropoffTime,
+    pickupDate,
+    pickupTime,
+    t,
+  ]);
+
   const handleReservationSubmit = (event) => {
     event.preventDefault();
+
+    if (!canReserve || calculatedPrice === null) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(t("Price check is required before sending reservation."));
+      return;
+    }
+
+    const formattedPrice = formatCalculatedPrice(calculatedPrice, calculatedCurrency);
     const reservationLines = [
       `${t("Vehicle")}: ${carItem?.title || t("Vehicle")}`,
       `${t("Location")}: ${selectedLocation || "-"}`,
@@ -166,6 +479,7 @@ export default function Single1({ carItem }) {
       `${t("Drop-off location")}: ${dropoffLocation || "-"}`,
       `${t("Drop-off date")}: ${formatDateForMessage(dropoffDate) || "-"}`,
       `${t("Drop-off time")}: ${dropoffTime || "-"}`,
+      formattedPrice ? `${t("Calculated price")}: ${formattedPrice}` : null,
       message ? `${t("Message")}: ${message}` : null,
       typeof window !== "undefined" ? `URL: ${window.location.href}` : null,
     ].filter(Boolean);
@@ -290,9 +604,30 @@ export default function Single1({ carItem }) {
             onChange={(event) => setMessage(event.target.value)}
           />
         </div>
-        <button type="submit" className="side-btn reservation-submit">
-          {t("Send reservation")}
-        </button>
+        {priceCheckError && <p className="field-error-text">{priceCheckError}</p>}
+        {canReserve && calculatedPrice !== null && (
+          <p className="text">
+            {t("Price for selected period: {price}", {
+              price: formatCalculatedPrice(calculatedPrice, calculatedCurrency),
+            })}
+          </p>
+        )}
+        {canReserve ? (
+          <button type="submit" className="side-btn reservation-submit">
+            {t("Reserve now")}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="side-btn reservation-submit"
+            onClick={handlePriceCheck}
+            disabled={priceCheckStatus === "loading"}
+          >
+            {priceCheckStatus === "loading"
+              ? t("Checking price...")
+              : t("Check price")}
+          </button>
+        )}
       </form>
     </div>
   );

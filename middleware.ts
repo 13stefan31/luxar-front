@@ -39,9 +39,9 @@ export function middleware(request: NextRequest) {
   const internalPath = toInternalPath(pathWithoutLocale, locale);
   const url = request.nextUrl.clone();
   url.pathname = internalPath;
-  const response = NextResponse.rewrite(url);
-  response.headers.set("x-locale", locale);
-  return response;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-locale", locale);
+  return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
 }
 
 export const config = {

@@ -15,36 +15,36 @@ const galleryItems = [
   {
     id: 2,
     type: "image",
-    src: "/images/placeholder.svg", // City-ready compact rental
-    alt: "Blue compact hatchback parked in the city",
+    src: "/images/banner/IMG_0874.jpg",  
+    alt: "Luxar - Rent a Car Crna Gora",
     className: "item2",
   },
   {
     id: 3,
     type: "image",
-    src: "/images/placeholder.svg", // Silver SUV in sunlight
-    alt: "Silver SUV ready for weekend adventures",
+    src: "/images/banner/IMG_0875.jpg",
+    alt: "Luxar - Rent a Car Crna Gora",
     className: "item3",
   },
   {
     id: 4,
     type: "image",
-    src: "/images/placeholder.svg", // Premium sedan front
-    alt: "Premium sedan from our downtown fleet",
+    src: "/images/banner/IMG_0876.jpg",
+    alt: "Luxar - Rent a Car Crna Gora",
     className: "item4",
   },
   {
     id: 5,
     type: "image",
-    src: "/images/placeholder.svg", // Dealership exterior
-    alt: "Dealership lot with ready-to-rent vehicles",
+    src: "/images/banner/IMG_0877.jpg",
+    alt: "Luxar - Rent a Car Crna Gora",
     className: "item5",
   },
   {
     id: 6,
     type: "image",
-    src: "/images/placeholder.svg", // Convertible by the coast
-    alt: "Convertible poised for a scenic rental drive",
+    src: "/images/banner/IMG_0878.jpg",
+    alt: "Luxar - Rent a Car Crna Gora",
     className: "item6",
   },
 ];

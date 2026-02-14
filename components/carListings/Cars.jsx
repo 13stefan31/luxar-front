@@ -25,7 +25,7 @@ const splitDateTime = (value) => {
 
 const API_URL = `${INVENTORY_API_ROOT}/cars`;
 const FALLBACK_IMAGE = "/images/car.webp";
-const DEFAULT_PRICE = 50;
+const DEFAULT_TIME = "12:00";
 const VARIANT_SLIDER_SETTINGS = {
   arrows: true,
   dots: false,
@@ -202,10 +202,14 @@ const mapCars = (items, pageToLoad, perPage, t) => {
         })
       : [];
     const rawPrice =
-      car.price_per_day ?? car.price ?? car.pricePerDay ?? 0;
-    const priceValue = Number.isFinite(Number(rawPrice))
-      ? Number(rawPrice)
-      : 0;
+      car.price_per_day ?? car.price ?? car.pricePerDay;
+    const parsedPrice =
+      rawPrice === null || rawPrice === undefined
+        ? null
+        : typeof rawPrice === "string" && rawPrice.trim() === ""
+          ? null
+          : Number(rawPrice);
+    const priceValue = Number.isFinite(parsedPrice) ? parsedPrice : null;
     const badgeSeed = car.id ?? `${pageToLoad}-${index}`;
     const badges = getRandomBadges(badgeSeed, 2);
     return {
@@ -248,9 +252,9 @@ export default function Cars() {
   const { filters, setFilters } = useCarFilters();
   const [draftFilters, setDraftFilters] = useState(filters);
   const [pickupDate, setPickupDate] = useState("");
-  const [pickupTime, setPickupTime] = useState("");
+  const [pickupTime, setPickupTime] = useState(DEFAULT_TIME);
   const [dropoffDate, setDropoffDate] = useState("");
-  const [dropoffTime, setDropoffTime] = useState("");
+  const [dropoffTime, setDropoffTime] = useState(DEFAULT_TIME);
   const {
     engineType,
     transmissionType,
@@ -316,9 +320,9 @@ export default function Cars() {
     const nextPickup = splitDateTime(pickupDateTime);
     const nextDropoff = splitDateTime(dropoffDateTime);
     setPickupDate(nextPickup.date);
-    setPickupTime(nextPickup.time);
+    setPickupTime(nextPickup.time || DEFAULT_TIME);
     setDropoffDate(nextDropoff.date);
-    setDropoffTime(nextDropoff.time);
+    setDropoffTime(nextDropoff.time || DEFAULT_TIME);
   }, [filterKey]);
   const handleFilterChange = (key) => (value) => {
     setDraftFilters((prev) => ({ ...prev, [key]: value }));
@@ -421,6 +425,7 @@ export default function Cars() {
           throw new Error("Request failed");
         }
         const payload = await response.json();
+        console.log("Cars API response:", payload);
         const items = Array.isArray(payload.data) ? payload.data : [];
         const perPage = payload.meta?.perPage || items.length || 1;
         const metaTotalItems = Number(payload.meta?.totalItems);
@@ -493,14 +498,14 @@ export default function Cars() {
   const hasPriceFilter =
     minPriceValue !== null || maxPriceValue !== null;
   const filteredCars = carItems.filter((car) => {
-    const resolvedPrice =
-      Number.isFinite(car.priceValue) && car.priceValue > 0
-        ? car.priceValue
-        : DEFAULT_PRICE;
-    if (minPriceValue !== null && resolvedPrice < minPriceValue) {
+    const hasPriceValue = Number.isFinite(car.priceValue);
+    if (hasPriceFilter && !hasPriceValue) {
       return false;
     }
-    if (maxPriceValue !== null && resolvedPrice > maxPriceValue) {
+    if (minPriceValue !== null && car.priceValue < minPriceValue) {
+      return false;
+    }
+    if (maxPriceValue !== null && car.priceValue > maxPriceValue) {
       return false;
     }
     return true;
@@ -802,11 +807,6 @@ export default function Cars() {
                 const baseEquipmentSet = new Set(
                   baseVariant?.equipment || []
                 );
-                const basePriceValue =
-                  expandedCar && Number.isFinite(expandedCar.priceValue)
-                    ? expandedCar.priceValue
-                    : 0;
-                const showPrice = basePriceValue > 0;
                 const renderVariantCard = (variant, index) => {
                   const isBase = index === 0;
                   const equipment = variant.equipment || [];
@@ -818,14 +818,6 @@ export default function Cars() {
                     : differenceItems.length
                       ? differenceItems
                       : [t("Additional equipment not listed")];
-                  const priceStep = 5;
-                  const variantPriceValue =
-                    showPrice && !isBase
-                      ? basePriceValue + differenceItems.length * priceStep
-                      : basePriceValue;
-                  const priceLabel = showPrice
-                    ? variantPriceValue
-                    : DEFAULT_PRICE;
                   const imageSrc =
                     variant.image ||
                     expandedCar.images?.[0] ||
@@ -857,12 +849,6 @@ export default function Cars() {
                         />
                       </div>
                       <div className="variant-card-body">
-                        <div className="variant-price">
-                          <PriceWithInfo
-                            value={priceLabel}
-                            fallback={DEFAULT_PRICE}
-                          />
-                        </div>
                         <div className="variant-diff-label">
                           {isBase
                             ? t("Standard")
@@ -1003,19 +989,20 @@ export default function Cars() {
                                   <div
                                     className={`price-wrap ${
                                       hasDiscount ? "has-discount" : ""
-                                    }${hasVariants ? " price-placeholder" : ""}`}
+                                    }`}
                                   >
                                     <span className="current-price">
-                                      <PriceWithInfo
-                                        value={currentPriceValue}
-                                        fallback={DEFAULT_PRICE}
-                                      />
+                                      {Number.isFinite(currentPriceValue) ? (
+                                        <span className="price-prefix">
+                                          {t("From")}
+                                        </span>
+                                      ) : null}
+                                      <PriceWithInfo value={currentPriceValue} />
                                     </span>
                                     {hasDiscount && (
                                       <span className="original-price">
                                         <PriceWithInfo
                                           value={car.priceValue}
-                                          fallback={DEFAULT_PRICE}
                                           showInfo={false}
                                         />
                                       </span>

@@ -175,10 +175,14 @@ export default function Cars() {
 
         const mappedCars = data.slice(0, HOME_CARS_LIMIT).map((car, index) => {
           const rawPrice =
-            car.price_per_day ?? car.price ?? car.pricePerDay ?? 0;
-          const priceValue = Number.isFinite(Number(rawPrice))
-            ? Number(rawPrice)
-            : 0;
+            car.price_per_day ?? car.price ?? car.pricePerDay;
+          const parsedPrice =
+            rawPrice === null || rawPrice === undefined
+              ? null
+              : typeof rawPrice === "string" && rawPrice.trim() === ""
+                ? null
+                : Number(rawPrice);
+          const priceValue = Number.isFinite(parsedPrice) ? parsedPrice : null;
           const imageUrl = Array.isArray(car.images)
             ? car.images.find((image) => image?.path)?.path
             : null;
@@ -312,12 +316,6 @@ export default function Cars() {
       ]
     : [];
   const baseEquipmentSet = new Set(baseVariant?.equipment || []);
-  const basePriceValue =
-    expandedCar && Number.isFinite(expandedCar.priceValue)
-      ? expandedCar.priceValue
-      : 0;
-  const showPrice = basePriceValue > 0;
-
   const renderVariantCard = (variant, index) => {
     const isBase = index === 0;
     const equipment = variant.equipment || [];
@@ -329,12 +327,6 @@ export default function Cars() {
       : differenceItems.length
         ? differenceItems
         : [t("Additional equipment not listed")];
-    const priceStep = 5;
-    const variantPriceValue =
-      showPrice && !isBase
-        ? basePriceValue + differenceItems.length * priceStep
-        : basePriceValue;
-    const priceLabel = showPrice ? variantPriceValue : 50;
     const imageSrc = variant.image || expandedCar.images?.[0] || FALLBACK_IMAGE;
     const imageAlt = `${expandedCar.title || t("Variant")} ${index + 1}`;
     return (
@@ -357,9 +349,6 @@ export default function Cars() {
           />
         </div>
         <div className="variant-card-body">
-          <div className="variant-price">
-            <PriceWithInfo value={priceLabel} fallback={50} />
-          </div>
           <div className="variant-diff-label">
             {isBase ? t("Standard") : t("Includes additional")}
           </div>
@@ -516,8 +505,8 @@ export default function Cars() {
                         ))}
                     </ul>
                     <div className="btn-box">
-                      <span className={hasVariants ? "price-placeholder" : ""}>
-                        <PriceWithInfo value={car.priceValue} fallback={50} />
+                      <span>
+                        <PriceWithInfo value={car.priceValue} />
                       </span>
                       <small>{car.oldPrice}</small>
                           <Link
