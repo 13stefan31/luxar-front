@@ -43,7 +43,7 @@ const proxy = async (request, params, method) => {
 
   const headers = {};
   let body;
-  if (method !== "DELETE") {
+  if (method !== "DELETE" && method !== "GET") {
     const contentType = request.headers.get("content-type") || "";
     const isMultipart = contentType.toLowerCase().includes("multipart/form-data");
     body = isMultipart ? await request.formData() : await request.text();
@@ -67,6 +67,10 @@ const proxy = async (request, params, method) => {
     headers: remoteResponse.headers,
   });
 };
+
+export async function GET(request, context) {
+  return proxy(request, context?.params, "GET");
+}
 
 export async function PUT(request, context) {
   return proxy(request, context?.params, "POST");

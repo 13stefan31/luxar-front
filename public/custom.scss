@@ -2220,6 +2220,67 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   margin-bottom: 16px;
 }
 
+.admin-registration-search {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.admin-registration-search .box-ip-search {
+  flex: 1 1 320px;
+}
+
+.admin-registration-search .box-ip-search .icon {
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.admin-registration-search .box-ip-search input {
+  border: 1px solid rgba(5, 11, 32, 0.18);
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 8px 12px 8px 34px;
+  width: 100%;
+}
+
+.admin-registration-search .admin-search-btn,
+.admin-registration-search .admin-search-reset-btn {
+  align-items: center;
+  background: var(--theme-color-dark);
+  border: 1px solid var(--theme-color-dark);
+  border-radius: 10px;
+  box-shadow: none;
+  color: var(--theme-color-light);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 600;
+  justify-content: center;
+  letter-spacing: 0.08em;
+  min-height: 42px;
+  padding: 10px 16px;
+  text-transform: uppercase;
+}
+
+.admin-registration-search .admin-search-btn:hover {
+  background: var(--theme-color1) !important;
+  border-color: var(--theme-color1) !important;
+  color: var(--theme-color-dark) !important;
+}
+
+.admin-registration-search .admin-search-reset-btn {
+  background: transparent;
+  color: var(--theme-color-dark);
+}
+
+.admin-registration-search .admin-search-reset-btn:hover {
+  background: rgba(5, 11, 32, 0.08) !important;
+  border-color: rgba(5, 11, 32, 0.18) !important;
+  color: var(--theme-color-dark) !important;
+}
+
 .my-listing-table .listing-table {
   margin-top: 16px;
   border-spacing: 0 6px;
@@ -2426,6 +2487,15 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
     justify-content: center;
     width: 100%;
   }
+
+  .admin-registration-search .box-ip-search {
+    flex-basis: 100%;
+  }
+
+  .admin-registration-search .admin-search-btn,
+  .admin-registration-search .admin-search-reset-btn {
+    width: 100%;
+  }
 }
 
 /* Themed table header */
@@ -2468,6 +2538,15 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   border: 1px solid rgba(5, 11, 32, 0.12);
   border-radius: 12px;
   box-shadow: none;
+}
+
+.my-listing-table .listing-table tbody tr.vehicle-row--clickable {
+  cursor: pointer;
+}
+
+.my-listing-table .listing-table tbody tr.vehicle-row--clickable:focus-visible {
+  outline: 2px solid var(--theme-color1);
+  outline-offset: 2px;
 }
 
 .my-listing-table .listing-table tbody tr.vehicle-row:hover {
@@ -2855,11 +2934,28 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   box-shadow: none;
 }
 
+.car-details-tabs .variation-search {
+  margin-bottom: 14px;
+}
+
+.car-details-tabs .variation-search .admin-registration-search {
+  max-width: 520px;
+}
+
 .car-details-tabs .variation-header {
   background: #f8f9fb;
   border: 1px solid rgba(5, 11, 32, 0.08);
   border-radius: 12px;
   padding: 10px 12px;
+}
+
+.car-details-tabs .variation-header--clickable {
+  cursor: pointer;
+}
+
+.car-details-tabs .variation-header--clickable:focus-visible {
+  outline: 2px solid var(--theme-color1);
+  outline-offset: 2px;
 }
 
 .car-details-tabs .variation-title {
@@ -2893,9 +2989,9 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   color: var(--theme-color-dark);
 }
 
-.car-details-tabs .variation-uuid {
+.car-details-tabs .variation-registration-label {
+  color: #667085;
   font-size: 12px;
-  color: #98a2b3;
   font-weight: 500;
 }
 
@@ -4672,7 +4768,7 @@ a:hover {
 
 .inventory-section .side-bar-column .reservation-box .content-box .text {
   color: #5b6475;
-  margin-bottom: 18px;
+  margin-bottom: 0 !important;
 }
 
 .inventory-section .side-bar-column .reservation-box .reservation-form {
@@ -4791,6 +4887,147 @@ a:hover {
   font-weight: 700;
   letter-spacing: 0.02em;
   margin-top: 4px;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy,
+.reservation-box--modal .reservation-policy {
+  position: relative;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy
+  + .reservation-policy,
+.reservation-box--modal .reservation-policy + .reservation-policy {
+  margin-top: 8px;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__trigger,
+.reservation-box--modal .reservation-policy__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 2px;
+  background: transparent;
+  color: #050b20;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: help;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__trigger
+  i,
+.reservation-box--modal .reservation-policy__trigger i {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__tooltip,
+.reservation-box--modal .reservation-policy__tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(360px, calc(100vw - 72px));
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #f8fafc;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
+  font-size: 12px;
+  line-height: 1.55;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    transform 0.2s ease;
+  z-index: 30;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__tooltip::before,
+.reservation-box--modal .reservation-policy__tooltip::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 16px;
+  width: 12px;
+  height: 12px;
+  background: #0f172a;
+  transform: rotate(45deg);
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__tooltip
+  p,
+.reservation-box--modal .reservation-policy__tooltip p {
+  margin: 0;
+  color: #f8fafc;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy__tooltip
+  p
+  + p,
+.reservation-box--modal .reservation-policy__tooltip p + p {
+  margin-top: 8px;
+}
+
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy:hover
+  .reservation-policy__tooltip,
+.inventory-section
+  .side-bar-column
+  .reservation-box
+  .reservation-form
+  .reservation-policy:focus-within
+  .reservation-policy__tooltip,
+.reservation-box--modal .reservation-policy:hover .reservation-policy__tooltip,
+.reservation-box--modal
+  .reservation-policy:focus-within
+  .reservation-policy__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 @media (max-width: 575px) {

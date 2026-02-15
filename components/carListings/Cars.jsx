@@ -1,12 +1,12 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Slider from "react-slick";
 import Image from "next/image";
 import SelectComponent from "../common/SelectComponent";
 import Link from "@/components/common/LocalizedLink";
 import { useLanguage } from "@/context/LanguageContext";
 import { useCarFilters } from "./useCarFilters";
-import { getBadgeColor, getRandomBadges } from "@/lib/carBadges";
+import { getBadgeColor, resolveCarBadges } from "@/lib/carBadges";
 import { getCarDetailHref } from "@/lib/carPaths";
 import {
   getInventoryApiHeaders,
@@ -58,6 +58,28 @@ const normalizeTimeTo24h = (value) => {
   }
   return `${pad2(hours)}:${pad2(minutes)}`;
 };
+const toInputDateFormat = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  const localMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+  }
+  return raw;
+};
+const toSearchDateFormat = (value) => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return value;
+  }
+  return `${match[3]}.${match[2]}.${match[1]}`;
+};
 const splitDateTime = (value) => {
   if (!value) {
     return { date: "", time: "" };
@@ -66,11 +88,11 @@ const splitDateTime = (value) => {
   if (!raw) {
     return { date: "", time: "" };
   }
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](.+))?$/);
+  const match = raw.match(/^([^ T]+)(?:[ T](.+))?$/);
   if (!match) {
     return { date: raw, time: "" };
   }
-  const date = match[1] || "";
+  const date = toInputDateFormat(match[1] || "");
   const time = normalizeTimeTo24h(match[2] || "");
   return { date, time };
 };
@@ -283,8 +305,9 @@ const mapCars = (items, pageToLoad, perPage, t) => {
           ? null
           : Number(rawPrice);
     const priceValue = Number.isFinite(parsedPrice) ? parsedPrice : null;
-    const badgeSeed = car.id ?? `${pageToLoad}-${index}`;
-    const badges = getRandomBadges(badgeSeed, 2);
+    const badges = resolveCarBadges(
+      car.badges ?? car.badge_list ?? car.badgeList
+    );
     return {
       id: car.id ?? `${pageToLoad}-${index}`,
       alias: car.alias,
@@ -338,18 +361,35 @@ export default function Cars() {
     transmissionType,
     fuelType,
     manufactureYear,
-    minPrice,
-    maxPrice,
     startingDate,
     endingDate,
   } = filters;
+  const detailDateQuery = useMemo(() => {
+    const query = {};
+    if (startingDate) {
+      query.startingDate = startingDate;
+    }
+    if (endingDate) {
+      query.endingDate = endingDate;
+    }
+    return query;
+  }, [startingDate, endingDate]);
+  const buildDetailHref = useCallback(
+    (car, instanceUuid) => {
+      const pathname = getCarDetailHref(car);
+      const query = { ...detailDateQuery };
+      if (instanceUuid) {
+        query.instance = instanceUuid;
+      }
+      return Object.keys(query).length ? { pathname, query } : pathname;
+    },
+    [detailDateQuery]
+  );
   const {
     engineType: draftEngineType,
     transmissionType: draftTransmissionType,
     fuelType: draftFuelType,
     manufactureYear: draftManufactureYear,
-    minPrice: draftMinPrice,
-    maxPrice: draftMaxPrice,
   } = draftFilters;
   const toggleExpanded = (id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -392,7 +432,7 @@ export default function Cars() {
     ],
     [t]
   );
-  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${minPrice}|${maxPrice}|${startingDate}|${endingDate}`;
+  const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${startingDate}|${endingDate}`;
   useEffect(() => {
     setDraftFilters(filters);
     const nextPickup = splitDateTime(startingDate);
@@ -420,12 +460,6 @@ export default function Cars() {
       manufactureYear: event.target.value,
     }));
   };
-  const handlePriceChange = (key) => (event) => {
-    setDraftFilters((prev) => ({
-      ...prev,
-      [key]: event.target.value,
-    }));
-  };
   const handleApplyFilters = () => {
     const nextFilters = { ...draftFilters };
     const normalizedPickupDate = clampDateToMin(pickupDate, today);
@@ -439,13 +473,15 @@ export default function Cars() {
     );
     const normalizedPickupTime = normalizeTimeTo24h(pickupTime);
     const normalizedDropoffTime = normalizeTimeTo24h(dropoffTime);
+    const formattedPickupDate = toSearchDateFormat(normalizedPickupDate);
+    const formattedDropoffDate = toSearchDateFormat(normalizedDropoffDate);
     const nextStartingDate =
-      normalizedPickupDate && normalizedPickupTime
-        ? `${normalizedPickupDate} ${normalizedPickupTime}`
+      formattedPickupDate && normalizedPickupTime
+        ? `${formattedPickupDate} ${normalizedPickupTime}`
         : "";
     const nextEndingDate =
-      normalizedDropoffDate && normalizedDropoffTime
-        ? `${normalizedDropoffDate} ${normalizedDropoffTime}`
+      formattedDropoffDate && normalizedDropoffTime
+        ? `${formattedDropoffDate} ${normalizedDropoffTime}`
         : "";
     nextFilters.startingDate = nextStartingDate;
     nextFilters.endingDate = nextEndingDate;
@@ -520,12 +556,6 @@ export default function Cars() {
         if (manufactureYear) {
           queryParams.set("manufactureYear", manufactureYear);
         }
-        if (minPrice) {
-          queryParams.set("minPrice", minPrice);
-        }
-        if (maxPrice) {
-          queryParams.set("maxPrice", maxPrice);
-        }
         const formattedStartingDate = formatRequestDateTime(startingDate);
         if (formattedStartingDate) {
           queryParams.set("startingDate", formattedStartingDate);
@@ -598,53 +628,25 @@ export default function Cars() {
     transmissionType,
     fuelType,
     manufactureYear,
-    minPrice,
-    maxPrice,
     startingDate,
     endingDate,
   ]);
-
-  const minPriceValue =
-    minPrice !== "" && Number.isFinite(Number(minPrice))
-      ? Number(minPrice)
-      : null;
-  const maxPriceValue =
-    maxPrice !== "" && Number.isFinite(Number(maxPrice))
-      ? Number(maxPrice)
-      : null;
-  const hasPriceFilter =
-    minPriceValue !== null || maxPriceValue !== null;
-  const filteredCars = carItems.filter((car) => {
-    const hasPriceValue = Number.isFinite(car.priceValue);
-    if (hasPriceFilter && !hasPriceValue) {
-      return false;
-    }
-    if (minPriceValue !== null && car.priceValue < minPriceValue) {
-      return false;
-    }
-    if (maxPriceValue !== null && car.priceValue > maxPriceValue) {
-      return false;
-    }
-    return true;
-  });
   const totalCount =
-    hasPriceFilter
-      ? filteredCars.length
-      : Number.isFinite(meta.totalItems) && meta.totalItems >= 0
-        ? meta.totalItems
-        : meta.totalPages && meta.perPage
-          ? meta.totalPages * meta.perPage
-          : carItems.length;
+    Number.isFinite(meta.totalItems) && meta.totalItems >= 0
+      ? meta.totalItems
+      : meta.totalPages && meta.perPage
+        ? meta.totalPages * meta.perPage
+        : carItems.length;
   const showingText = totalCount
     ? t("Showing {shown} of {total} vehicles", {
-        shown: filteredCars.length,
+        shown: carItems.length,
         total: totalCount,
       })
-    : t("Showing {shown} vehicles", { shown: filteredCars.length });
+    : t("Showing {shown} vehicles", { shown: carItems.length });
   const canLoadMore = page < (meta.totalPages || page);
   const isInitialLoading = isLoading && carItems.length === 0;
   const safeColumnsPerRow = columnsPerRow || 1;
-  const groupedCars = filteredCars.reduce((groups, car, index) => {
+  const groupedCars = carItems.reduce((groups, car, index) => {
     if (index % safeColumnsPerRow === 0) {
       groups.push([]);
     }
@@ -726,6 +728,8 @@ export default function Cars() {
                             <label>{t("Pickup time")}</label>
                             <input
                               type="time"
+                              lang="en-GB"
+                              step="1800"
                               value={pickupTime}
                               onChange={(event) =>
                                 setPickupTime(event.target.value)
@@ -763,6 +767,8 @@ export default function Cars() {
                             <label>{t("Drop-off time")}</label>
                             <input
                               type="time"
+                              lang="en-GB"
+                              step="1800"
                               value={dropoffTime}
                               onChange={(event) =>
                                 setDropoffTime(event.target.value)
@@ -802,41 +808,6 @@ export default function Cars() {
                         value={draftFuelType}
                         onChange={handleFilterChange("fuelType")}
                       />
-                    </div>
-                  </div>
-                  <div className="col-lg-12">
-                    <div className="price-box">
-                      <form
-                        onSubmit={(event) => event.preventDefault()}
-                        className="row g-0 date-time-row"
-                      >
-                        <div className="form-column col-6 col-lg-6">
-                          <div className="form_boxes">
-                            <label>{t("Min price")}</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={draftMinPrice}
-                              onChange={handlePriceChange("minPrice")}
-                              placeholder={t("Min price")}
-                            />
-                          </div>
-                        </div>
-                        <div className="form-column v2 col-6 col-lg-6">
-                          <div className="form_boxes">
-                            <label>{t("Max price")}</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={draftMaxPrice}
-                              onChange={handlePriceChange("maxPrice")}
-                              placeholder={t("Max price")}
-                            />
-                          </div>
-                        </div>
-                      </form>
                     </div>
                   </div>
                   <div className="col-lg-12">
@@ -884,7 +855,7 @@ export default function Cars() {
                   </div>
                 </div>
               )}
-              {!isInitialLoading && !errorMessage && filteredCars.length === 0 && (
+              {!isInitialLoading && !errorMessage && carItems.length === 0 && (
                 <div className="row">
                   <div className="col-12">
                     <div className="text">{t("No results.")}</div>
@@ -945,10 +916,7 @@ export default function Cars() {
                       key={
                         variant.uuid || `${expandedCar.id}-${variant.index}`
                       }
-                      href={{
-                        pathname: getCarDetailHref(expandedCar),
-                        query: { instance: variant.uuid },
-                      }}
+                      href={buildDetailHref(expandedCar, variant.uuid)}
                       className={`variant-card${
                         isBase ? " is-base" : " is-upgrade"
                       }`}
@@ -1022,7 +990,7 @@ export default function Cars() {
                             <div className={car.imgBoxClass}>
                               <figure className="image">
                                 <Link
-                                  href={getCarDetailHref(car)}
+                                  href={buildDetailHref(car)}
                                   onClick={(event) =>
                                     handleCardClick(event, car.id, hasVariants)
                                   }
@@ -1067,7 +1035,7 @@ export default function Cars() {
                               <div className="content-main">
                                 <h6 className="title">
                                     <Link
-                                      href={getCarDetailHref(car)}
+                                      href={buildDetailHref(car)}
                                     onClick={(event) =>
                                       handleCardClick(
                                         event,
@@ -1124,7 +1092,7 @@ export default function Cars() {
                                     )}
                                   </div>
                                   <Link
-                                    href={getCarDetailHref(car)}
+                                    href={buildDetailHref(car)}
                                     className="details variant-button"
                                     onClick={(event) =>
                                       handleCardClick(

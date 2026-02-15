@@ -1,5 +1,4 @@
 import Profile from "@/components/admin/Profile";
-import Footer1 from "@/components/footers/Footer1";
 
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
 import React from "react";
@@ -15,7 +14,6 @@ export default function ProfilePage() {
         <HeaderDashboard />
 
         <Profile />
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

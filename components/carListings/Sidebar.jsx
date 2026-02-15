@@ -48,6 +48,28 @@ const normalizeTimeTo24h = (value) => {
   }
   return `${pad2(hours)}:${pad2(minutes)}`;
 };
+const toInputDateFormat = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  const localMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+  }
+  return raw;
+};
+const toSearchDateFormat = (value) => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return value;
+  }
+  return `${match[3]}.${match[2]}.${match[1]}`;
+};
 const splitDateTime = (value) => {
   if (!value) {
     return { date: "", time: "" };
@@ -56,11 +78,11 @@ const splitDateTime = (value) => {
   if (!raw) {
     return { date: "", time: "" };
   }
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](.+))?$/);
+  const match = raw.match(/^([^ T]+)(?:[ T](.+))?$/);
   if (!match) {
     return { date: raw, time: "" };
   }
-  const date = match[1] || "";
+  const date = toInputDateFormat(match[1] || "");
   const time = normalizeTimeTo24h(match[2] || "");
   return { date, time };
 };
@@ -91,7 +113,7 @@ export default function Sidebar() {
     () => resolveMinDropoffDate(pickupDate, today),
     [pickupDate, today]
   );
-  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.minPrice}|${filters.maxPrice}|${filters.startingDate}|${filters.endingDate}`;
+  const filterKey = `${filters.engineType}|${filters.transmissionType}|${filters.fuelType}|${filters.manufactureYear}|${filters.startingDate}|${filters.endingDate}`;
   useEffect(() => {
     setDraftFilters(filters);
     const nextPickup = splitDateTime(filters.startingDate);
@@ -115,8 +137,6 @@ export default function Sidebar() {
     transmissionType: draftTransmissionType,
     fuelType: draftFuelType,
     manufactureYear: draftManufactureYear,
-    minPrice: draftMinPrice,
-    maxPrice: draftMaxPrice,
   } = draftFilters;
   const engineTypeOptions = useMemo(
     () => [
@@ -157,12 +177,6 @@ export default function Sidebar() {
       manufactureYear: event.target.value,
     }));
   };
-  const handlePriceChange = (key) => (event) => {
-    setDraftFilters((prev) => ({
-      ...prev,
-      [key]: event.target.value,
-    }));
-  };
   const handleApplyFilters = () => {
     const nextFilters = { ...draftFilters };
     const normalizedPickupDate = clampDateToMin(pickupDate, today);
@@ -176,13 +190,15 @@ export default function Sidebar() {
     );
     const normalizedPickupTime = normalizeTimeTo24h(pickupTime);
     const normalizedDropoffTime = normalizeTimeTo24h(dropoffTime);
+    const formattedPickupDate = toSearchDateFormat(normalizedPickupDate);
+    const formattedDropoffDate = toSearchDateFormat(normalizedDropoffDate);
     const startingDate =
-      normalizedPickupDate && normalizedPickupTime
-        ? `${normalizedPickupDate} ${normalizedPickupTime}`
+      formattedPickupDate && normalizedPickupTime
+        ? `${formattedPickupDate} ${normalizedPickupTime}`
         : "";
     const endingDate =
-      normalizedDropoffDate && normalizedDropoffTime
-        ? `${normalizedDropoffDate} ${normalizedDropoffTime}`
+      formattedDropoffDate && normalizedDropoffTime
+        ? `${formattedDropoffDate} ${normalizedDropoffTime}`
         : "";
     nextFilters.startingDate = startingDate;
     nextFilters.endingDate = endingDate;
@@ -244,6 +260,8 @@ export default function Sidebar() {
                         <label>{t("Pickup time")}</label>
                         <input
                           type="time"
+                          lang="en-GB"
+                          step="1800"
                           value={pickupTime}
                           onChange={(event) => setPickupTime(event.target.value)}
                           placeholder={t("Pickup time")}
@@ -279,6 +297,8 @@ export default function Sidebar() {
                         <label>{t("Drop-off time")}</label>
                         <input
                           type="time"
+                          lang="en-GB"
+                          step="1800"
                           value={dropoffTime}
                           onChange={(event) => setDropoffTime(event.target.value)}
                           placeholder={t("Drop-off time")}
@@ -316,41 +336,6 @@ export default function Sidebar() {
                     value={draftFuelType}
                     onChange={handleFilterChange("fuelType")}
                   />
-                </div>
-              </div>
-              <div className="col-lg-12">
-                <div className="price-box">
-                  <form
-                    onSubmit={(event) => event.preventDefault()}
-                    className="row g-0 date-time-row"
-                  >
-                    <div className="form-column col-6 col-lg-6">
-                      <div className="form_boxes">
-                        <label>{t("Min price")}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={draftMinPrice}
-                          onChange={handlePriceChange("minPrice")}
-                          placeholder={t("Min price")}
-                        />
-                      </div>
-                    </div>
-                    <div className="form-column v2 col-6 col-lg-6">
-                      <div className="form_boxes">
-                        <label>{t("Max price")}</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={draftMaxPrice}
-                          onChange={handlePriceChange("maxPrice")}
-                          placeholder={t("Max price")}
-                        />
-                      </div>
-                    </div>
-                  </form>
                 </div>
               </div>
               <div className="col-lg-12">

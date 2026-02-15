@@ -1,6 +1,4 @@
 import Dashboard from "@/components/admin/Dashboard";
-import Footer1 from "@/components/footers/Footer1";
-import Header1 from "@/components/headers/Header1";
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
 import React from "react";
 
@@ -15,7 +13,6 @@ export default function AdminDashboardPage() {
         <HeaderDashboard />
 
         <Dashboard />
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

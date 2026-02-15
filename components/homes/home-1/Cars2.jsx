@@ -4,7 +4,7 @@ import Link from "@/components/common/LocalizedLink";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { getBadgeColor, getRandomBadges } from "@/lib/carBadges";
+import { getBadgeColor, resolveCarBadges } from "@/lib/carBadges";
 import { getCarDetailHref } from "@/lib/carPaths";
 import {
   getInventoryApiHeaders,
@@ -275,8 +275,9 @@ export default function Cars2() {
                 };
               })
             : [];
-          const badgeSeed = car.id ?? index + 1;
-          const badges = getRandomBadges(badgeSeed, 2);
+          const badges = resolveCarBadges(
+            car.badges ?? car.badge_list ?? car.badgeList
+          );
           return {
             id: car.id ?? index + 1,
             alias: car.alias,

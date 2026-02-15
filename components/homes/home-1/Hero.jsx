@@ -16,6 +16,14 @@ const toLocalInputDate = (date) => {
   return localDate.toISOString().slice(0, 10);
 };
 
+const formatDateForSearch = (value) => {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return value;
+  }
+  return `${match[3]}.${match[2]}.${match[1]}`;
+};
+
 const getTodayInputDate = () => toLocalInputDate(new Date());
 
 const clampDateToMin = (value, minDate) => {
@@ -119,10 +127,16 @@ export default function Hero() {
   }, [engineType, transmissionType, fuelType, manufactureYear]);
   const dateTimeSearchHref = useMemo(() => {
     const params = new URLSearchParams();
+    const formattedPickupDate = formatDateForSearch(pickupDate);
+    const formattedDropoffDate = formatDateForSearch(dropoffDate);
     const pickupDateTime =
-      pickupDate && pickupTime ? `${pickupDate} ${pickupTime}` : "";
+      formattedPickupDate && pickupTime
+        ? `${formattedPickupDate} ${pickupTime}`
+        : "";
     const dropoffDateTime =
-      dropoffDate && dropoffTime ? `${dropoffDate} ${dropoffTime}` : "";
+      formattedDropoffDate && dropoffTime
+        ? `${formattedDropoffDate} ${dropoffTime}`
+        : "";
     if (pickupDateTime) {
       params.set("startingDate", pickupDateTime);
     }
@@ -274,6 +288,7 @@ export default function Hero() {
                       <input
                         id="pickupTime"
                         type="time"
+                        lang="en-GB"
                         step="1800"
                         value={pickupTime}
                         onChange={(e) => setPickupTime(e.target.value)}
@@ -320,6 +335,7 @@ export default function Hero() {
                       <input
                         id="dropoffTime"
                         type="time"
+                        lang="en-GB"
                         step="1800"
                         value={dropoffTime}
                         onChange={(e) => setDropoffTime(e.target.value)}

@@ -1,5 +1,4 @@
 import MyListings from "@/components/admin/MyListings";
-import Footer1 from "@/components/footers/Footer1";
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
 import React from "react";
 
@@ -15,7 +14,6 @@ export default function MyListingsPage() {
         <HeaderDashboard />
 
         <MyListings />
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

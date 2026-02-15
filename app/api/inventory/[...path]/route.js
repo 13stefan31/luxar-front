@@ -35,6 +35,19 @@ const buildHeaders = (request) => {
       headers.set("x-api-key", incomingApiKey);
     }
   }
+  if (apiHeaders.Authorization || apiHeaders.authorization) {
+    headers.set(
+      "authorization",
+      apiHeaders.Authorization || apiHeaders.authorization
+    );
+  } else {
+    const incomingAuthorization =
+      request.headers.get("authorization") ||
+      request.headers.get("Authorization");
+    if (incomingAuthorization) {
+      headers.set("authorization", incomingAuthorization);
+    }
+  }
   return headers;
 };
 

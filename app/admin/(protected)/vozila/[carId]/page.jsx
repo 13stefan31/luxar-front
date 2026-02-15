@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
-import Footer1 from "@/components/footers/Footer1";
 import Sidebar from "@/components/admin/Sidebar";
 import CarDetailsTabs from "@/components/admin/CarDetailsTabs";
 
@@ -38,7 +37,6 @@ export default function CarDetailPage({ params }) {
             </div>
           </div>
         </section>
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

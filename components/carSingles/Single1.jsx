@@ -1,8 +1,9 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Gallery, Item } from "react-photoswipe-gallery";
 import Slider from "react-slick";
+import { useSearchParams } from "next/navigation";
 import Link from "@/components/common/LocalizedLink";
 import { useLanguage } from "@/context/LanguageContext";
 import { useFloatingAction } from "@/context/FloatingActionContext";
@@ -39,6 +40,12 @@ const MONTENEGRO_CITIES = [
   "Zeta",
 ];
 
+const DEFAULT_TIME = "12:00";
+const HOUR_IN_MS = 60 * 60 * 1000;
+const DAY_IN_MS = 24 * HOUR_IN_MS;
+const RETURN_GRACE_HOURS = 2;
+const RETURN_GRACE_MS = RETURN_GRACE_HOURS * HOUR_IN_MS;
+
 const toInputDate = (date) => {
   if (!(date instanceof Date)) {
     return "";
@@ -67,6 +74,86 @@ const normalizeTextValue = (value) => {
   return String(value).trim();
 };
 
+const pad2 = (value) => String(value).padStart(2, "0");
+
+const normalizeTimeTo24h = (value) => {
+  const raw = normalizeTextValue(value);
+  if (!raw) {
+    return "";
+  }
+  const ampmMatch = raw.match(
+    /^\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])\s*$/
+  );
+  if (ampmMatch) {
+    let hours = Number(ampmMatch[1]);
+    const minutes = Number(ampmMatch[2] ?? "0");
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      return "";
+    }
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) {
+      return "";
+    }
+    const isPm = ampmMatch[3].toLowerCase() === "pm";
+    if (hours === 12) {
+      hours = isPm ? 12 : 0;
+    } else if (isPm) {
+      hours += 12;
+    }
+    return `${pad2(hours)}:${pad2(minutes)}`;
+  }
+  const timeMatch = raw.match(/^\s*(\d{1,2})(?::(\d{2}))?/);
+  if (!timeMatch) {
+    return "";
+  }
+  const hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2] ?? "0");
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return "";
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return "";
+  }
+  return `${pad2(hours)}:${pad2(minutes)}`;
+};
+
+const toInputDateFormat = (value) => {
+  const raw = normalizeTextValue(value);
+  if (!raw) {
+    return "";
+  }
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  const localMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+  }
+  return "";
+};
+
+const splitSearchDateTime = (value) => {
+  const raw = normalizeTextValue(value);
+  if (!raw) {
+    return { date: "", time: "" };
+  }
+  const match = raw.match(/^([^ T]+)(?:[ T](.+))?$/);
+  if (!match) {
+    return { date: toInputDateFormat(raw), time: "" };
+  }
+  return {
+    date: toInputDateFormat(match[1]),
+    time: normalizeTimeTo24h(match[2] || ""),
+  };
+};
+
+const clampDateToMin = (value, minDate) => {
+  if (!value) {
+    return "";
+  }
+  return value < minDate ? minDate : value;
+};
+
 const toApiDateTime = (date, time) => {
   const safeDate = normalizeTextValue(date);
   const safeTime = normalizeTextValue(time);
@@ -74,6 +161,57 @@ const toApiDateTime = (date, time) => {
     return "";
   }
   return `${safeDate} ${safeTime}`;
+};
+
+const parseDateTimeInput = (date, time) => {
+  const safeDate = normalizeTextValue(date);
+  const safeTime = normalizeTextValue(time);
+  if (!safeDate || !safeTime) {
+    return null;
+  }
+  const parsed = new Date(`${safeDate}T${safeTime}`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+};
+
+const formatDateTimeForApi = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return `${toInputDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+};
+
+const calculateRentalChargePolicy = (startDate, endDate) => {
+  if (
+    !(startDate instanceof Date) ||
+    !(endDate instanceof Date) ||
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    return null;
+  }
+
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return null;
+  }
+
+  const fullDays = Math.floor(durationMs / DAY_IN_MS);
+  const remainderMs = durationMs - fullDays * DAY_IN_MS;
+  const hasRemainder = remainderMs > 0;
+  const withinGrace = hasRemainder && remainderMs <= RETURN_GRACE_MS;
+
+  let chargeableDays = 1;
+  if (fullDays > 0) {
+    chargeableDays = !hasRemainder || withinGrace ? fullDays : fullDays + 1;
+  }
+
+  return {
+    chargeableDays,
+    billableEnd: new Date(startDate.getTime() + chargeableDays * DAY_IN_MS),
+  };
 };
 
 const parseNumericValue = (value) => {
@@ -201,11 +339,25 @@ const resolveCarPriceCode = (carItem) => {
 const WHATSAPP_NUMBER =
   process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "38267880066";
 
+const CROSS_BORDER_POLICY_PARAGRAPHS = [
+  "Cross-border travel is permitted only with prior notification and approval from the Rent a Car agency.",
+  "Vehicles are allowed to travel to the following countries: Italy, Austria, Slovenia, Croatia, as well as other countries neighbouring Montenegro prior agreement.",
+  "The renter must inform the agency in advance of any intention to cross a border in order to obtain the necessary documentation and to calculate any applicable cross-border fees.",
+  "Unauthorized border crossing constitutes a violation of the rental agreement.",
+];
+
+const RENTAL_CALCULATION_POLICY_PARAGRAPHS = [
+  "The minimum rental charge is one full day (24 hours).",
+  "Rentals within the same day are charged as one full day.",
+  "A grace period of 2 hours is allowed for vehicle return.",
+  "Delays exceeding 2 hours will result in an additional full rental day being charged.",
+  "Example: If a vehicle is rented for 3 days and returned 3 hours late, the total charge will be 4 rental days.",
+];
+
 export default function Single1({ carItem }) {
+  const searchParams = useSearchParams();
+  const searchParamsKey = searchParams?.toString() || "";
   const { setReserveAction } = useFloatingAction() || {};
-  const [selectedLocation, setSelectedLocation] = useState(
-    MONTENEGRO_CITIES[0]
-  );
   const [pickupLocation, setPickupLocation] = useState("");
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
@@ -241,6 +393,14 @@ export default function Single1({ carItem }) {
   latestRangeKeyRef.current = currentDateTimeKey;
   const canReserve =
     priceCheckStatus === "success" && checkedRangeKey === currentDateTimeKey;
+  const rentalChargePolicy = useMemo(() => {
+    const start = parseDateTimeInput(pickupDate, pickupTime);
+    const end = parseDateTimeInput(dropoffDate, dropoffTime);
+    if (!start || !end) {
+      return null;
+    }
+    return calculateRentalChargePolicy(start, end);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime]);
   const galleryImages = Array.isArray(carItem?.images)
     ? carItem.images
         .map((image) => normalizeInventoryImageUrl(image, ""))
@@ -263,6 +423,42 @@ export default function Single1({ carItem }) {
     setNavMain(mainSliderRef.current);
     setNavThumbs(thumbSliderRef.current);
   }, []);
+  useEffect(() => {
+    if (!searchParamsKey) {
+      return;
+    }
+    const params = new URLSearchParams(searchParamsKey);
+    const pickupParam = params.get("startingDate");
+    const dropoffParam = params.get("endingDate");
+    if (!pickupParam && !dropoffParam) {
+      return;
+    }
+    const pickupFromSearch = splitSearchDateTime(pickupParam);
+    const dropoffFromSearch = splitSearchDateTime(dropoffParam);
+    const nextPickupDate = clampDateToMin(pickupFromSearch.date, today);
+    const nextPickupTime =
+      pickupFromSearch.time || (nextPickupDate ? DEFAULT_TIME : "");
+    const nextMinDropoffDate = nextPickupDate || today;
+    const nextDropoffDate = clampDateToMin(
+      dropoffFromSearch.date,
+      nextMinDropoffDate
+    );
+    const nextDropoffTime =
+      dropoffFromSearch.time || (nextDropoffDate ? DEFAULT_TIME : "");
+
+    if (nextPickupDate) {
+      setPickupDate(nextPickupDate);
+    }
+    if (nextPickupTime) {
+      setPickupTime(nextPickupTime);
+    }
+    if (nextDropoffDate) {
+      setDropoffDate(nextDropoffDate);
+    }
+    if (nextDropoffTime) {
+      setDropoffTime(nextDropoffTime);
+    }
+  }, [searchParamsKey, today]);
   const specs = Array.isArray(carItem?.specs) ? carItem.specs : [];
 
   const openReservationModal = useCallback(() => {
@@ -343,9 +539,8 @@ export default function Single1({ carItem }) {
 
   const handlePriceCheck = useCallback(async () => {
     const startDateTime = toApiDateTime(pickupDate, pickupTime);
-    const endDateTime = toApiDateTime(dropoffDate, dropoffTime);
 
-    if (!startDateTime || !endDateTime) {
+    if (!startDateTime) {
       setPriceCheckStatus("error");
       setPriceCheckError(
         t("Please choose pickup and drop-off date and time first.")
@@ -353,9 +548,9 @@ export default function Single1({ carItem }) {
       return;
     }
 
-    const start = new Date(`${pickupDate}T${pickupTime}`);
-    const end = new Date(`${dropoffDate}T${dropoffTime}`);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    const start = parseDateTimeInput(pickupDate, pickupTime);
+    const end = parseDateTimeInput(dropoffDate, dropoffTime);
+    if (!start || !end) {
       setPriceCheckStatus("error");
       setPriceCheckError(
         t("Please choose pickup and drop-off date and time first.")
@@ -369,6 +564,14 @@ export default function Single1({ carItem }) {
     }
 
     if (!carPriceCode) {
+      setPriceCheckStatus("error");
+      setPriceCheckError(t("Unable to calculate price for this vehicle right now."));
+      return;
+    }
+
+    const billingPolicy = calculateRentalChargePolicy(start, end);
+    const endDateTime = formatDateTimeForApi(billingPolicy?.billableEnd);
+    if (!endDateTime) {
       setPriceCheckStatus("error");
       setPriceCheckError(t("Unable to calculate price for this vehicle right now."));
       return;
@@ -472,13 +675,15 @@ export default function Single1({ carItem }) {
     const formattedPrice = formatCalculatedPrice(calculatedPrice, calculatedCurrency);
     const reservationLines = [
       `${t("Vehicle")}: ${carItem?.title || t("Vehicle")}`,
-      `${t("Location")}: ${selectedLocation || "-"}`,
       `${t("Pick-up location")}: ${pickupLocation || "-"}`,
       `${t("Pickup date")}: ${formatDateForMessage(pickupDate) || "-"}`,
       `${t("Pickup time")}: ${pickupTime || "-"}`,
       `${t("Drop-off location")}: ${dropoffLocation || "-"}`,
       `${t("Drop-off date")}: ${formatDateForMessage(dropoffDate) || "-"}`,
       `${t("Drop-off time")}: ${dropoffTime || "-"}`,
+      rentalChargePolicy
+        ? `${t("Chargeable rental days")}: ${rentalChargePolicy.chargeableDays}`
+        : null,
       formattedPrice ? `${t("Calculated price")}: ${formattedPrice}` : null,
       message ? `${t("Message")}: ${message}` : null,
       typeof window !== "undefined" ? `URL: ${window.location.href}` : null,
@@ -499,37 +704,23 @@ export default function Single1({ carItem }) {
         )}
       </p>
       <form className="reservation-form" onSubmit={handleReservationSubmit}>
-        <div className="reservation-field">
-          <label htmlFor="locationSelect">{t("Location")}</label>
-          <input
-            id="locationSelect"
-            type="text"
-            list="montenegroCities"
-            placeholder={t("Select city")}
-            required
-            value={selectedLocation}
-            onChange={(event) => setSelectedLocation(event.target.value)}
-          />
-        </div>
-        <datalist id="montenegroCities">
-          {MONTENEGRO_CITIES.map((place) => (
-            <option key={place} value={place} />
-          ))}
-        </datalist>
         <fieldset className="reservation-fieldset">
           <legend>{t("Pick-up")}</legend>
           <div className="reservation-field">
             <label htmlFor="pickupLocation">{t("Pick-up location")}</label>
-            <input
+            <select
               id="pickupLocation"
-              type="text"
-              list="montenegroCities"
-              placeholder={t("Airport, hotel, address")}
-              autoComplete="street-address"
               required
               value={pickupLocation}
               onChange={(event) => setPickupLocation(event.target.value)}
-            />
+            >
+              <option value="">{t("Select city")}</option>
+              {MONTENEGRO_CITIES.map((place) => (
+                <option key={`pickup-${place}`} value={place}>
+                  {place}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="reservation-row">
             <div className="reservation-field">
@@ -559,16 +750,19 @@ export default function Single1({ carItem }) {
           <legend>{t("Drop-off")}</legend>
           <div className="reservation-field">
             <label htmlFor="dropoffLocation">{t("Drop-off location")}</label>
-            <input
+            <select
               id="dropoffLocation"
-              type="text"
-              list="montenegroCities"
-              placeholder={t("Airport, hotel, address")}
-              autoComplete="street-address"
               required
               value={dropoffLocation}
               onChange={(event) => setDropoffLocation(event.target.value)}
-            />
+            >
+              <option value="">{t("Select city")}</option>
+              {MONTENEGRO_CITIES.map((place) => (
+                <option key={`dropoff-${place}`} value={place}>
+                  {place}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="reservation-row">
             <div className="reservation-field">
@@ -612,6 +806,13 @@ export default function Single1({ carItem }) {
             })}
           </p>
         )}
+        {rentalChargePolicy && (
+          <p className="text">
+            {t("Chargeable rental days: {count}", {
+              count: rentalChargePolicy.chargeableDays,
+            })}
+          </p>
+        )}
         {canReserve ? (
           <button type="submit" className="side-btn reservation-submit">
             {t("Reserve now")}
@@ -628,6 +829,28 @@ export default function Single1({ carItem }) {
               : t("Check price")}
           </button>
         )}
+        <div className="reservation-policy">
+          <button type="button" className="reservation-policy__trigger">
+            <i className="ri-information-line" aria-hidden="true" />
+            <span>{t("Cross-Border Travel Policy")}</span>
+          </button>
+          <div className="reservation-policy__tooltip" role="note">
+            {CROSS_BORDER_POLICY_PARAGRAPHS.map((paragraph, index) => (
+              <p key={`cross-border-policy-${index}`}>{t(paragraph)}</p>
+            ))}
+          </div>
+        </div>
+        <div className="reservation-policy">
+          <button type="button" className="reservation-policy__trigger">
+            <i className="ri-time-line" aria-hidden="true" />
+            <span>{t("Rental Calculation & Late Return Policy")}</span>
+          </button>
+          <div className="reservation-policy__tooltip" role="note">
+            {RENTAL_CALCULATION_POLICY_PARAGRAPHS.map((paragraph, index) => (
+              <p key={`rental-calculation-policy-${index}`}>{t(paragraph)}</p>
+            ))}
+          </div>
+        </div>
       </form>
     </div>
   );

@@ -8,10 +8,13 @@ const FILTER_KEYS = [
   "transmissionType",
   "fuelType",
   "manufactureYear",
-  "minPrice",
-  "maxPrice",
   "startingDate",
   "endingDate",
+];
+
+const LEGACY_FILTER_KEYS = [
+  "minPrice",
+  "maxPrice",
   "pickupDateTime",
   "dropoffDateTime",
 ];
@@ -42,8 +45,6 @@ export function useCarFilters() {
       transmissionType: getFilterValue(searchParams, "transmissionType"),
       fuelType: getFilterValue(searchParams, "fuelType"),
       manufactureYear: getFilterValue(searchParams, "manufactureYear"),
-      minPrice: getFilterValue(searchParams, "minPrice"),
-      maxPrice: getFilterValue(searchParams, "maxPrice"),
       startingDate: getDateFilterValue(
         searchParams,
         "startingDate",
@@ -63,12 +64,7 @@ export function useCarFilters() {
       const params = new URLSearchParams(
         searchParams ? searchParams.toString() : ""
       );
-      if ("startingDate" in (updates || {})) {
-        params.delete("pickupDateTime");
-      }
-      if ("endingDate" in (updates || {})) {
-        params.delete("dropoffDateTime");
-      }
+      LEGACY_FILTER_KEYS.forEach((key) => params.delete(key));
       Object.entries(updates || {}).forEach(([key, value]) => {
         if (!FILTER_KEYS.includes(key)) {
           return;
@@ -92,6 +88,7 @@ export function useCarFilters() {
       searchParams ? searchParams.toString() : ""
     );
     FILTER_KEYS.forEach((key) => params.delete(key));
+    LEGACY_FILTER_KEYS.forEach((key) => params.delete(key));
     const query = params.toString();
     const normalizedQuery = query.replace(/\+/g, "%20");
     const nextUrl = normalizedQuery ? `${pathname}?${normalizedQuery}` : pathname;

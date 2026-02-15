@@ -1,5 +1,4 @@
 import Saved from "@/components/admin/Saved";
-import Footer1 from "@/components/footers/Footer1";
 
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
 import React from "react";
@@ -15,7 +14,6 @@ export default function SavedPage() {
         <HeaderDashboard />
 
         <Saved />
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

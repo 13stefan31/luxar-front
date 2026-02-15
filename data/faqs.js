@@ -102,6 +102,24 @@ export const accordionData = [
     isActive: false,
   },
   {
+    question: "Can I travel outside the country with the rental vehicle?",
+    answer:
+      "Yes, cross-border travel is allowed to Italy, Austria, Slovenia, Croatia, and other neighboring countries upon prior approval. You must inform us in advance so we can provide the necessary documentation and advise you of any applicable cross-border fees. Unauthorized border crossing is not permitted.",
+    isActive: false,
+  },
+  {
+    question: "How is the rental period calculated?",
+    answer:
+      "The minimum rental charge is one full day (24 hours). Even if the vehicle is rented for only part of a day, it will be charged as one full rental day.",
+    isActive: false,
+  },
+  {
+    question: "What happens if I return the vehicle late?",
+    answer:
+      "A grace period of 2 hours is allowed. If the vehicle is returned more than 2 hours after the agreed return time, an additional full rental day will be charged.",
+    isActive: false,
+  },
+  {
     question: "Are roads in Montenegro suitable for small cars?",
     answer:
       "Yes. Most roads are paved and suitable for compact cars. SUVs are optional, not required, unless you plan extensive mountain driving.",

@@ -4,7 +4,7 @@ import Slider from "react-slick";
 import Link from "@/components/common/LocalizedLink";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
-import { getBadgeColor, getRandomBadges } from "@/lib/carBadges";
+import { getBadgeColor, resolveCarBadges } from "@/lib/carBadges";
 import { getCarDetailHref } from "@/lib/carPaths";
 import {
   getInventoryApiHeaders,
@@ -196,8 +196,9 @@ const mapCars = (rawData, t) => {
           };
         })
       : [];
-    const badgeSeed = car.id ?? index + 1;
-    const badges = getRandomBadges(badgeSeed, 2);
+    const badges = resolveCarBadges(
+      car.badges ?? car.badge_list ?? car.badgeList
+    );
     return {
       id: car.id ?? index + 1,
       alias: car.alias,

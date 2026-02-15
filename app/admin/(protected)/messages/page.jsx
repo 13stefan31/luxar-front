@@ -1,5 +1,4 @@
 import Messages from "@/components/admin/Messages";
-import Footer1 from "@/components/footers/Footer1";
 
 import HeaderDashboard from "@/components/headers/HeaderDashboard";
 import React from "react";
@@ -15,7 +14,6 @@ export default function MessagesPage() {
         <HeaderDashboard />
 
         <Messages />
-        <Footer1 parentClass="boxcar-footer footer-style-one v2" />
       </div>
     </>
   );

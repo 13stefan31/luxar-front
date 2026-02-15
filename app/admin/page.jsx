@@ -1,5 +1,4 @@
 import AdminLoginSection from "./AdminLoginSection";
-import Footer1 from "@/components/footers/Footer1";
 import Header1 from "@/components/headers/Header1";
 
 export const metadata = {
@@ -14,7 +13,6 @@ export default function AdminPage() {
       <main className="admin-login-wrapper"> 
         <AdminLoginSection />
       </main>
-      <Footer1 parentClass="boxcar-footer footer-style-one v1 cus-st-1" />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   adminGetCar,
   adminGetCarInstances,
+  adminGetCarInstance,
   adminUpdateCar,
   adminUpdateCarInstance,
   adminDeleteCarInstance,
@@ -50,6 +51,46 @@ const normalizeInstancesData = (payload) => {
   return sources.find((source) => Array.isArray(source)) ?? [];
 };
 
+const extractPayloadEntity = (payload) => {
+  const candidates = [
+    payload?.data?.item,
+    payload?.data?.result,
+    payload?.data?.carInstance,
+    payload?.data?.instance,
+    payload?.item,
+    payload?.result,
+    payload?.carInstance,
+    payload?.instance,
+    payload?.data,
+    payload,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      const firstObject = candidate.find(
+        (item) => item && typeof item === "object"
+      );
+      if (firstObject) {
+        return firstObject;
+      }
+      continue;
+    }
+    if (candidate && typeof candidate === "object") {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+const normalizeRegistration = (value) =>
+  String(value || "")
+    .trim()
+    .toUpperCase();
+
+const isUnauthorizedError = (status, message) =>
+  status === 401 ||
+  String(message || "").toLowerCase().includes("jwt token not found");
+
 const buildVariationKey = (instance, index) =>
   instance?.registrationNumber ||
   instance?.id ||
@@ -73,9 +114,9 @@ const formatEngineLabel = (power, capacity, type) => {
     parts.push(`${power} hp`);
   }
   if (capacity) {
-    const liters = Number(capacity) / 1000;
-    if (!Number.isNaN(liters)) {
-      parts.push(`${liters.toFixed(1)}L`);
+    const rawCapacity = String(capacity).trim();
+    if (rawCapacity) {
+      parts.push(rawCapacity);
     }
   }
   if (type) {
@@ -460,6 +501,14 @@ export default function CarDetailsTabs({ carId }) {
   const router = useRouter();
   const [car, setCar] = useState(null);
   const [instances, setInstances] = useState([]);
+  const [variationRegistrationQuery, setVariationRegistrationQuery] =
+    useState("");
+  const [variationRegistrationSearch, setVariationRegistrationSearch] =
+    useState("");
+  const [variationSearchMatchedKey, setVariationSearchMatchedKey] =
+    useState("");
+  const [variationSearchLoading, setVariationSearchLoading] = useState(false);
+  const [variationSearchError, setVariationSearchError] = useState("");
   const [instanceEdits, setInstanceEdits] = useState({});
   const [instanceSaving, setInstanceSaving] = useState({});
   const [expandedVariations, setExpandedVariations] = useState({});
@@ -543,6 +592,11 @@ export default function CarDetailsTabs({ carId }) {
     if (!carId) {
       return;
     }
+    setVariationRegistrationQuery("");
+    setVariationRegistrationSearch("");
+    setVariationSearchMatchedKey("");
+    setVariationSearchError("");
+    setVariationSearchLoading(false);
     let cancelled = false;
     const controller = new AbortController();
 
@@ -1509,6 +1563,25 @@ export default function CarDetailsTabs({ carId }) {
     }));
   };
 
+  const handleVariationHeaderClick = (event, variationKey) => {
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("button,a,input,select,textarea,label")
+    ) {
+      return;
+    }
+    toggleVariation(variationKey);
+  };
+
+  const handleVariationHeaderKeyDown = (event, variationKey) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    toggleVariation(variationKey);
+  };
+
   const removeVariationFromState = (variationKey) => {
     setInstances((prev) =>
       prev.filter((instance) => instance.variationKey !== variationKey)
@@ -1913,6 +1986,7 @@ export default function CarDetailsTabs({ carId }) {
   };
 
   const handleAddVariation = () => {
+    handleVariationSearchReset();
     const variationKey = `new-${Date.now()}`;
     const displayNumber = getNextVariationNumber(instances);
     const blankVariation = {
@@ -1940,6 +2014,80 @@ export default function CarDetailsTabs({ carId }) {
       [variationKey]: true,
     }));
     setPendingFocusVariationKey(variationKey);
+  };
+
+  const resolveVariationRegistration = (instance) => {
+    const variationKey = instance?.variationKey;
+    const edit = variationKey ? instanceEdits[variationKey] : null;
+    return normalizeRegistration(
+      edit?.savedRegistrationNumber ||
+        edit?.registrationNumber ||
+        instance?.savedRegistrationNumber ||
+        instance?.registrationNumber
+    );
+  };
+
+  const handleVariationSearchReset = () => {
+    setVariationRegistrationQuery("");
+    setVariationRegistrationSearch("");
+    setVariationSearchMatchedKey("");
+    setVariationSearchError("");
+  };
+
+  const handleVariationSearchSubmit = async (event) => {
+    event.preventDefault();
+    const query = normalizeRegistration(variationRegistrationQuery);
+    if (!query) {
+      handleVariationSearchReset();
+      return;
+    }
+
+    setVariationRegistrationQuery(query);
+    setVariationRegistrationSearch(query);
+    setVariationSearchError("");
+    setVariationSearchLoading(true);
+    try {
+      const payload = await adminGetCarInstance(query);
+      const entity = extractPayloadEntity(payload);
+      const registrationFromApi = normalizeRegistration(
+        entity?.registrationNumber || entity?.regNumber || query
+      );
+      const carIdFromApi = entity?.carId ?? entity?.car?.id ?? entity?.car?.carId;
+      if (carIdFromApi && String(carIdFromApi) !== String(carId)) {
+        setVariationSearchMatchedKey("");
+        return;
+      }
+
+      const matchedVariation = instances.find(
+        (instance) =>
+          resolveVariationRegistration(instance) === registrationFromApi
+      );
+      if (!matchedVariation) {
+        setVariationSearchMatchedKey("");
+        return;
+      }
+
+      setVariationSearchMatchedKey(matchedVariation.variationKey);
+      setExpandedVariations((prev) => ({
+        ...prev,
+        [matchedVariation.variationKey]: true,
+      }));
+    } catch (err) {
+      const status = err?.status ?? err?.payload?.code;
+      if (isUnauthorizedError(status, err?.message)) {
+        await adminLogout();
+        router.replace("/admin");
+        return;
+      }
+      if (status === 404) {
+        setVariationSearchMatchedKey("");
+        return;
+      }
+      setVariationSearchMatchedKey("");
+      setVariationSearchError(err?.message || "Neuspješna pretraga varijacije.");
+    } finally {
+      setVariationSearchLoading(false);
+    }
   };
 
   const handleInstanceCoverChange = (variationKey, event) => {
@@ -2145,6 +2293,17 @@ export default function CarDetailsTabs({ carId }) {
       };
     })
     .filter(Boolean);
+  const normalizedVariationRegistrationSearch = String(
+    variationRegistrationSearch || ""
+  )
+    .trim()
+    .toUpperCase();
+  const isVariationSearchActive = Boolean(normalizedVariationRegistrationSearch);
+  const filteredInstances = isVariationSearchActive
+    ? instances.filter(
+        (instance) => instance.variationKey === variationSearchMatchedKey
+      )
+    : instances;
 
   const getExistingCount = (iso) => {
     if (!iso) {
@@ -2623,15 +2782,71 @@ export default function CarDetailsTabs({ carId }) {
                 + Dodaj varijaciju
               </button>
             </div>
+            <div className="variation-search">
+              <form
+                className="admin-registration-search"
+                onSubmit={handleVariationSearchSubmit}
+              >
+                <div className="box-ip-search">
+                  <span className="icon" aria-hidden="true">
+                    <svg
+                      width={14}
+                      height={14}
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6.29301 0.287598C2.9872 0.287598 0.294312 2.98048 0.294312 6.28631C0.294312 9.59211 2.9872 12.2902 6.29301 12.2902C7.70502 12.2902 9.00364 11.7954 10.03 10.9738L12.5287 13.4712C12.6548 13.5921 12.8232 13.6588 12.9979 13.657C13.1725 13.6552 13.3395 13.5851 13.4631 13.4617C13.5867 13.3382 13.6571 13.1713 13.6591 12.9967C13.6611 12.822 13.5947 12.6535 13.474 12.5272L10.9753 10.0285C11.7976 9.00061 12.293 7.69995 12.293 6.28631C12.293 2.98048 9.59882 0.287598 6.29301 0.287598ZM6.29301 1.62095C8.87824 1.62095 10.9584 3.70108 10.9584 6.28631C10.9584 8.87153 8.87824 10.9569 6.29301 10.9569C3.70778 10.9569 1.62764 8.87153 1.62764 6.28631C1.62764 3.70108 3.70778 1.62095 6.29301 1.62095Z"
+                        fill="#050B20"
+                      />
+                    </svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={variationRegistrationQuery}
+                    onChange={(event) =>
+                      setVariationRegistrationQuery(event.target.value.toUpperCase())
+                    }
+                    placeholder="Pretraži varijacije po registraciji, npr. PLAV139"
+                    aria-label="Pretraga varijacija po registraciji"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="theme-btn admin-search-btn"
+                  disabled={variationSearchLoading}
+                >
+                  {variationSearchLoading ? "Pretraga..." : "Pretraži"}
+                </button>
+                {(isVariationSearchActive || variationRegistrationQuery) && (
+                  <button
+                    type="button"
+                    className="theme-btn admin-search-reset-btn"
+                    onClick={handleVariationSearchReset}
+                    disabled={variationSearchLoading}
+                  >
+                    Reset
+                  </button>
+                )}
+              </form>
+              {variationSearchError && (
+                <p className="field-error-text">{variationSearchError}</p>
+              )}
+            </div>
             <div className="variation-accordion">
-              {instances.length ? (
-                instances.map((instance, index) => {
+              {filteredInstances.length ? (
+                filteredInstances.map((instance, index) => {
                   const variationKey = instance.variationKey;
                   const edit = instanceEdits[variationKey] || instance;
                   const expanded = Boolean(expandedVariations[variationKey]);
                   const variationNumber =
-                    edit.displayNumber ?? instance.displayNumber ?? index + 1; 
-                  const variationUuid = edit.uuid || instance.code || "";
+                    edit.displayNumber ?? instance.displayNumber ?? index + 1;
+                  const variationRegistrationLabel =
+                    edit.savedRegistrationNumber ||
+                    edit.registrationNumber ||
+                    instance.registrationNumber ||
+                    "bez registracije";
                   const headerInfo = formatEngineLabel(
                     edit.enginePower,
                     edit.engineCapacity,
@@ -2688,19 +2903,20 @@ export default function CarDetailsTabs({ carId }) {
                       }}
                       className={`variation-card ${expanded ? "expanded" : ""}`}
                     >
-                      <div className="variation-header">
+                      <div
+                        className="variation-header variation-header--clickable"
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expanded}
+                        onClick={(event) =>
+                          handleVariationHeaderClick(event, variationKey)
+                        }
+                        onKeyDown={(event) =>
+                          handleVariationHeaderKeyDown(event, variationKey)
+                        }
+                      >
                         <div
                           className="variation-title"
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={expanded}
-                          onClick={() => toggleVariation(variationKey)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              toggleVariation(variationKey);
-                            }
-                          }}
                         >
                           <span
                             className={`variation-thumb ${
@@ -2714,18 +2930,16 @@ export default function CarDetailsTabs({ carId }) {
                             aria-hidden="true"
                           />
                           <p className="variation-label">
-                              #{variationNumber}  
-                            {variationUuid ? (
-                              <span className="variation-uuid">
-                                {" "}
-                                ({variationUuid})
-                              </span>
-                            ) : null}
+                            #{variationNumber}
+                            <span className="variation-registration-label">
+                              {" "}
+                              ({variationRegistrationLabel})
+                            </span>
                             <span
                               className={`chevron ${expanded ? "open" : ""}`}
                               aria-hidden="true"
                             />
-                          </p> 
+                          </p>
                           {shouldShowHeaderInfo && (
                             <p className="variation-meta">
                               <span>{headerInfo}</span>
@@ -2736,7 +2950,8 @@ export default function CarDetailsTabs({ carId }) {
                           <button
                             type="button"
                             className={`link-button${isDeleted ? "" : " danger"}`}
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation();
                               if (isDeleted) {
                                 handleVariationActivate(
                                   variationKey,
@@ -2749,6 +2964,7 @@ export default function CarDetailsTabs({ carId }) {
                                 );
                               }
                             }}
+                            onKeyDown={(event) => event.stopPropagation()}
                             disabled={!canToggleStatus || Boolean(isStatusProcessing)}
                           >
                             {isStatusProcessing
@@ -3085,7 +3301,11 @@ export default function CarDetailsTabs({ carId }) {
                   );
                 })
               ) : (
-                <div className="alert-message">Nema varijacija za ovo vozilo.</div>
+                <div className="alert-message">
+                  {normalizedVariationRegistrationSearch
+                    ? `Nema varijacija za registraciju "${normalizedVariationRegistrationSearch}".`
+                    : "Nema varijacija za ovo vozilo."}
+                </div>
               )}
             </div>
           </div>
