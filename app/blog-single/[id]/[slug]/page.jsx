@@ -15,7 +15,7 @@ export async function generateMetadata({ params, searchParams }) {
   return metadataBuilder({ searchParams });
 }
 
-export default function BlogSinglePage({ params }) {
+export default function BlogSingleSlugPage({ params }) {
   return (
     <>
       <Header1 headerClass="boxcar-header header-style-v1 style-two inner-header cus-style-1" />

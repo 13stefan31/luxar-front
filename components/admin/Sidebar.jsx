@@ -9,6 +9,8 @@ const BASE_PATH = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH || "/admin";
 const menuItems = [
   { href: "/dashboard", icon: "/images/icons/dash1.svg", label: "Dashboard" },
   { href: "/vozila", icon: "/images/icons/dash2.svg", label: "Vozila" },
+  { href: "/rezervacije", icon: "/images/icons/dash3.svg", label: "Rezervacije" },
+  { href: "/blogovi", icon: "/images/icons/dash4.svg", label: "Blog" },
 ];
 
 export default function Sidebar() {

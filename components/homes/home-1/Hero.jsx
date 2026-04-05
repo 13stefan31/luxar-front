@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import Link from "@/components/common/LocalizedLink";
 import SelectComponent from "@/components/common/SelectComponent";
 import { useLanguage } from "@/context/LanguageContext";
+import TIME_OPTIONS from "@/lib/timeOptions";
 
 const addDays = (date, days) => {
   const next = new Date(date);
@@ -17,11 +18,18 @@ const toLocalInputDate = (date) => {
 };
 
 const formatDateForSearch = (value) => {
-  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return value;
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
   }
-  return `${match[3]}.${match[2]}.${match[1]}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+  const localMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+  }
+  return raw;
 };
 
 const getTodayInputDate = () => toLocalInputDate(new Date());
@@ -285,17 +293,20 @@ export default function Hero() {
                       {t("Datum i vrijeme preuzimanja")}
                     </label>
                     <div className="search-input">
-                      <input
+                      <select
                         id="pickupTime"
-                        type="time"
-                        lang="en-GB"
-                        step="1800"
                         value={pickupTime}
                         onChange={(e) => setPickupTime(e.target.value)}
                         onClick={handlePickerClick}
                         aria-label={t("Pickup time")}
-                        placeholder={t("Pickup time")}
-                      />
+                      >
+                        <option value="">{t("Select time")}</option>
+                        {TIME_OPTIONS.map((time) => (
+                          <option key={`pickup-${time}`} value={time}>
+                            {time}
+                          </option>
+                        ))}
+                      </select>
                       <span className="search-icon" aria-hidden="true">
                         <i className="fa fa-clock" />
                       </span>
@@ -332,17 +343,20 @@ export default function Hero() {
                       {t("Datum i vrijeme povrata")}
                     </label>
                     <div className="search-input">
-                      <input
+                      <select
                         id="dropoffTime"
-                        type="time"
-                        lang="en-GB"
-                        step="1800"
                         value={dropoffTime}
                         onChange={(e) => setDropoffTime(e.target.value)}
                         onClick={handlePickerClick}
                         aria-label={t("Drop-off time")}
-                        placeholder={t("Drop-off time")}
-                      />
+                      >
+                        <option value="">{t("Select time")}</option>
+                        {TIME_OPTIONS.map((time) => (
+                          <option key={`dropoff-${time}`} value={time}>
+                            {time}
+                          </option>
+                        ))}
+                      </select>
                       <span className="search-icon" aria-hidden="true">
                         <i className="fa fa-clock" />
                       </span>

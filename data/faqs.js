@@ -104,7 +104,7 @@ export const accordionData = [
   {
     question: "Can I travel outside the country with the rental vehicle?",
     answer:
-      "Yes, cross-border travel is allowed to Italy, Austria, Slovenia, Croatia, and other neighboring countries upon prior approval. You must inform us in advance so we can provide the necessary documentation and advise you of any applicable cross-border fees. Unauthorized border crossing is not permitted.",
+      "Yes, cross-border travel is allowed to Croatia, Serbia, Albania, Kosovo, Bosnia and Herzegovina, Italy, and Greece upon prior approval. You must inform us in advance so we can provide the necessary documentation and advise you of any applicable cross-border fees. Unauthorized border crossing is not permitted.",
     isActive: false,
   },
   {

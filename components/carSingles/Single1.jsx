@@ -7,38 +7,18 @@ import { useSearchParams } from "next/navigation";
 import Link from "@/components/common/LocalizedLink";
 import { useLanguage } from "@/context/LanguageContext";
 import { useFloatingAction } from "@/context/FloatingActionContext";
-import { normalizeInventoryImageUrl } from "@/lib/inventoryApi";
+import {
+  normalizeInventoryImageUrl,
+  fetchCities,
+  fetchReservationItems,
+} from "@/lib/inventoryApi";
+import CityAutocomplete from "@/components/common/CityAutocomplete";
+import PhoneInput from "@/components/common/PhoneInput";
 import RelatedCars from "./RelatedCars";
 import Overview from "./sections/Overview";
 import Description from "./sections/Description";
 
-const MONTENEGRO_CITIES = [
-  "Podgorica",
-  "Niksic",
-  "Herceg Novi",
-  "Pljevlja",
-  "Bijelo Polje",
-  "Bar",
-  "Ulcinj",
-  "Budva",
-  "Kotor",
-  "Tivat",
-  "Cetinje",
-  "Danilovgrad",
-  "Mojkovac",
-  "Kolasin",
-  "Zabljak",
-  "Pluzine",
-  "Savnik",
-  "Plav",
-  "Rozaje",
-  "Andrijevica",
-  "Berane",
-  "Petnjica",
-  "Gusinje",
-  "Tuzi",
-  "Zeta",
-];
+import TIME_OPTIONS from "@/lib/timeOptions";
 
 const DEFAULT_TIME = "12:00";
 const HOUR_IN_MS = 60 * 60 * 1000;
@@ -229,6 +209,110 @@ const parseNumericValue = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const ERROR_MESSAGE_CODES = {
+  "car_instance.not_found.by_code": "Vehicle not found.",
+  "date_range.drop_off_before_pick_up":
+    "Drop-off date must be after pick-up date.",
+  "date_range.ending_before_starting":
+    "End date must be after start date.",
+  "date_range.starting_after_ending":
+    "Start date must be before end date.",
+  "vehicle.not_available.for_period":
+    "This vehicle is not available for the selected period.",
+  "vehicle.not_available.no_alternative":
+    "No available vehicle found for the selected period.",
+  "vehicle.already_booked":
+    "This vehicle was just booked by someone else. Please try again.",
+  "reservation.missing_name": "First name and last name are required.",
+  "reservation.missing_email": "Email is required.",
+  "reservation.missing_phone_number": "Phone number is required.",
+  "reservation.negative_total_price": "Invalid price calculation.",
+  "car_price.not_found.for_period":
+    "No pricing available for the selected period.",
+  "car_price.not_found.for_car":
+    "No pricing configured for this vehicle.",
+  "car_price.gap.non_contiguous_ranges":
+    "Pricing is incomplete for the selected period.",
+  "price_tier.not_found.for_duration":
+    "No pricing available for this rental duration.",
+  "validation.failed": "Please check the form and correct any errors.",
+};
+
+const VALIDATION_MESSAGES = {
+  "reservation.phone_number.invalid": "Invalid phone number format.",
+  "reservation.email.invalid": "Invalid email address.",
+  "reservation.first_name.blank": "First name is required.",
+  "reservation.last_name.blank": "Last name is required.",
+  "reservation.email.blank": "Email is required.",
+  "reservation.phone_number.blank": "Phone number is required.",
+  "reservation.vehicle_code.blank": "Vehicle is required.",
+  "reservation.pick_up_date.blank": "Pick-up date is required.",
+  "reservation.drop_off_date.blank": "Drop-off date is required.",
+  "reservation.pick_up_location.blank": "Pick-up location is required.",
+  "reservation.drop_off_location.blank": "Drop-off location is required.",
+  "reservation.pick_up_location.invalid": "Invalid pick-up location.",
+  "reservation.drop_off_location.invalid": "Invalid drop-off location.",
+  "reservation.pick_up_location_id.required": "Pick-up location is required.",
+  "reservation.drop_off_location_id.required": "Drop-off location is required.",
+  "reservation.language.invalid": "Invalid language.",
+  "reservation.pick_up_date.must_be_future": "Pick-up date must be in the future.",
+  "reservation.drop_off_date.must_be_after_pick_up": "Drop-off date must be after pick-up date.",
+  "reservation.pick_up_date.invalid": "Invalid pick-up date.",
+  "reservation.drop_off_date.invalid": "Invalid drop-off date.",
+  "reservation.vehicle_code.invalid": "Invalid vehicle code.",
+  "reservation.reservation_items.invalid": "Invalid reservation items.",
+  "reservation.missing_name": "First name and last name are required.",
+  "reservation.missing_email": "Email is required.",
+  "reservation.missing_phone_number": "Phone number is required.",
+  "reservation.negative_total_price": "Invalid price calculation.",
+  "This value should not be blank.": "This field is required.",
+  "This value is not valid.": "This value is not valid.",
+  "This field is missing.": "This field is missing.",
+};
+
+const FIELD_NAME_MAP = {
+  vehicleCode: "vehicleCode",
+  carPickUpDateTime: "pickupDate",
+  carDropOffDateTime: "dropoffDate",
+  pickUpLocationId: "pickupLocation",
+  dropOffLocationId: "dropoffLocation",
+  pickUpAdditionalLocation: "pickUpAdditionalLocation",
+  dropOffAdditionalLocation: "dropOffAdditionalLocation",
+  firstName: "firstName",
+  lastName: "lastName",
+  email: "email",
+  phoneNumber: "phoneNumber",
+  language: "language",
+  reservationItems: "reservationItems",
+};
+
+const parseValidationErrors = (payload) => {
+  if (
+    payload?.messageCode !== "validation.failed" ||
+    !Array.isArray(payload?.parameters)
+  ) {
+    return null;
+  }
+  const errors = {};
+  for (const param of payload.parameters) {
+    const frontField = FIELD_NAME_MAP[param.field] || param.field;
+    errors[frontField] =
+      VALIDATION_MESSAGES[param.message] || param.message;
+  }
+  return Object.keys(errors).length ? errors : null;
+};
+
+const resolveApiError = (payload, t, fallback) => {
+  const messageCode = payload?.messageCode;
+  if (messageCode === "validation.failed") {
+    return t(ERROR_MESSAGE_CODES["validation.failed"]);
+  }
+  if (messageCode && ERROR_MESSAGE_CODES[messageCode]) {
+    return t(ERROR_MESSAGE_CODES[messageCode]);
+  }
+  return payload?.error || payload?.message || t(fallback);
+};
+
 const resolveCalculatedPrice = (payload) => {
   const candidates = [
     payload?.data?.price,
@@ -341,7 +425,7 @@ const WHATSAPP_NUMBER =
 
 const CROSS_BORDER_POLICY_PARAGRAPHS = [
   "Cross-border travel is permitted only with prior notification and approval from the Rent a Car agency.",
-  "Vehicles are allowed to travel to the following countries: Italy, Austria, Slovenia, Croatia, as well as other countries neighbouring Montenegro prior agreement.",
+  "Vehicles are allowed to travel to the following countries: Croatia, Serbia, Albania, Kosovo, Bosnia and Herzegovina, Italy, and Greece.",
   "The renter must inform the agency in advance of any intention to cross a border in order to obtain the necessary documentation and to calculate any applicable cross-border fees.",
   "Unauthorized border crossing constitutes a violation of the rental agreement.",
 ];
@@ -364,15 +448,28 @@ export default function Single1({ carItem }) {
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [dropoffDate, setDropoffDate] = useState("");
   const [dropoffTime, setDropoffTime] = useState("");
-  const [message, setMessage] = useState("");
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [priceCheckStatus, setPriceCheckStatus] = useState("idle");
   const [priceCheckError, setPriceCheckError] = useState("");
   const [calculatedPrice, setCalculatedPrice] = useState(null);
   const [calculatedCurrency, setCalculatedCurrency] = useState("EUR");
+  const [priceBreakdown, setPriceBreakdown] = useState(null);
   const [checkedRangeKey, setCheckedRangeKey] = useState("");
-  const { t } = useLanguage();
+  const [cities, setCities] = useState([]);
+  const [reservationItems, setReservationItems] = useState([]);
+  const [selectedExtras, setSelectedExtras] = useState([]);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [pickUpAdditionalLocation, setPickUpAdditionalLocation] = useState("");
+  const [dropOffAdditionalLocation, setDropOffAdditionalLocation] = useState("");
+  const [reservationStatus, setReservationStatus] = useState("idle");
+  const [reservationError, setReservationError] = useState("");
+  const [reservationCode, setReservationCode] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const { t, locale } = useLanguage();
   const today = toInputDate(new Date());
   const minDropoffDate = pickupDate || today;
   const detail = carItem?.raw || {};
@@ -422,6 +519,14 @@ export default function Single1({ carItem }) {
   useEffect(() => {
     setNavMain(mainSliderRef.current);
     setNavThumbs(thumbSliderRef.current);
+  }, []);
+  useEffect(() => {
+    fetchCities()
+      .then(setCities)
+      .catch(() => setCities([]));
+    fetchReservationItems()
+      .then(setReservationItems)
+      .catch(() => setReservationItems([]));
   }, []);
   useEffect(() => {
     if (!searchParamsKey) {
@@ -534,8 +639,9 @@ export default function Single1({ carItem }) {
     setPriceCheckError("");
     setCalculatedPrice(null);
     setCalculatedCurrency("EUR");
+    setPriceBreakdown(null);
     setCheckedRangeKey("");
-  }, [pickupDate, pickupTime, dropoffDate, dropoffTime, carPriceCode]);
+  }, [pickupDate, pickupTime, dropoffDate, dropoffTime, carPriceCode, pickupLocation, dropoffLocation, selectedExtras]);
 
   const handlePriceCheck = useCallback(async () => {
     const startDateTime = toApiDateTime(pickupDate, pickupTime);
@@ -581,6 +687,7 @@ export default function Single1({ carItem }) {
     setPriceCheckError("");
     setCalculatedPrice(null);
     setCalculatedCurrency("EUR");
+    setPriceBreakdown(null);
     setCheckedRangeKey("");
 
     const active = activePriceCheckRef.current;
@@ -602,17 +709,24 @@ export default function Single1({ carItem }) {
           code: carPriceCode,
           startingDate: startDateTime,
           endingDate: endDateTime,
+          pickUpLocationId:
+            cities.find((c) => c.name === pickupLocation)?.id || null,
+          dropOffLocationId:
+            cities.find((c) => c.name === dropoffLocation)?.id || null,
+          reservationItems: selectedExtras,
         }),
       });
 
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const errorMessage =
-          payload?.error ||
-          payload?.message ||
-          t("Unable to calculate price for this vehicle right now.");
-        throw new Error(errorMessage);
+        throw new Error(
+          resolveApiError(
+            payload,
+            t,
+            "Unable to calculate price for this vehicle right now."
+          )
+        );
       }
 
       const resolvedPrice = resolveCalculatedPrice(payload);
@@ -629,6 +743,10 @@ export default function Single1({ carItem }) {
       }
       setCalculatedPrice(resolvedPrice);
       setCalculatedCurrency(resolveCalculatedCurrency(payload));
+      setPriceBreakdown({
+        daysBasedPrice: payload?.data?.daysBasedPrice ?? null,
+        reservationItemsPrices: payload?.data?.reservationItemsPrices ?? {},
+      });
       setCheckedRangeKey(currentDateTimeKey);
       setPriceCheckStatus("success");
       setPriceCheckError("");
@@ -655,15 +773,27 @@ export default function Single1({ carItem }) {
     }
   }, [
     carPriceCode,
+    cities,
     currentDateTimeKey,
     dropoffDate,
+    dropoffLocation,
     dropoffTime,
     pickupDate,
+    pickupLocation,
     pickupTime,
+    selectedExtras,
     t,
   ]);
 
-  const handleReservationSubmit = (event) => {
+  const handleExtraToggle = (code) => {
+    setSelectedExtras((prev) =>
+      prev.includes(code)
+        ? prev.filter((item) => item !== code)
+        : [...prev, code]
+    );
+  };
+
+  const handleReservationSubmit = async (event) => {
     event.preventDefault();
 
     if (!canReserve || calculatedPrice === null) {
@@ -672,27 +802,68 @@ export default function Single1({ carItem }) {
       return;
     }
 
-    const formattedPrice = formatCalculatedPrice(calculatedPrice, calculatedCurrency);
-    const reservationLines = [
-      `${t("Vehicle")}: ${carItem?.title || t("Vehicle")}`,
-      `${t("Pick-up location")}: ${pickupLocation || "-"}`,
-      `${t("Pickup date")}: ${formatDateForMessage(pickupDate) || "-"}`,
-      `${t("Pickup time")}: ${pickupTime || "-"}`,
-      `${t("Drop-off location")}: ${dropoffLocation || "-"}`,
-      `${t("Drop-off date")}: ${formatDateForMessage(dropoffDate) || "-"}`,
-      `${t("Drop-off time")}: ${dropoffTime || "-"}`,
-      rentalChargePolicy
-        ? `${t("Chargeable rental days")}: ${rentalChargePolicy.chargeableDays}`
-        : null,
-      formattedPrice ? `${t("Calculated price")}: ${formattedPrice}` : null,
-      message ? `${t("Message")}: ${message}` : null,
-      typeof window !== "undefined" ? `URL: ${window.location.href}` : null,
-    ].filter(Boolean);
+    setReservationStatus("loading");
+    setReservationError("");
+    setFieldErrors({});
 
-    const text = reservationLines.join("\n");
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-    setIsReservationModalOpen(false);
+    const startDateTime = toApiDateTime(pickupDate, pickupTime);
+    const billingPolicy = calculateRentalChargePolicy(
+      parseDateTimeInput(pickupDate, pickupTime),
+      parseDateTimeInput(dropoffDate, dropoffTime)
+    );
+    const endDateTime = formatDateTimeForApi(billingPolicy?.billableEnd);
+
+    try {
+      const response = await fetch("/api/car-reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicleCode: carPriceCode,
+          carPickUpDateTime: startDateTime,
+          carDropOffDateTime: endDateTime,
+          pickUpLocationId:
+            cities.find((c) => c.name === pickupLocation)?.id || null,
+          dropOffLocationId:
+            cities.find((c) => c.name === dropoffLocation)?.id || null,
+          firstName,
+          lastName,
+          email,
+          phoneNumber,
+          pickUpAdditionalLocation: pickUpAdditionalLocation || undefined,
+          dropOffAdditionalLocation: dropOffAdditionalLocation || undefined,
+          reservationItems: selectedExtras,
+          language: locale,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const validationErrors = parseValidationErrors(payload);
+        if (validationErrors) {
+          setFieldErrors(validationErrors);
+        }
+        throw new Error(
+          resolveApiError(
+            payload,
+            t,
+            "Unable to create reservation. Please try again."
+          )
+        );
+      }
+
+      const code =
+        payload?.reservationCode ||
+        payload?.data?.reservationCode ||
+        "";
+      setReservationCode(code);
+      setReservationStatus("success");
+    } catch (error) {
+      setReservationStatus("error");
+      setReservationError(
+        error?.message || t("Unable to create reservation. Please try again.")
+      );
+    }
   };
 
   const reservationForm = (
@@ -708,19 +879,17 @@ export default function Single1({ carItem }) {
           <legend>{t("Pick-up")}</legend>
           <div className="reservation-field">
             <label htmlFor="pickupLocation">{t("Pick-up location")}</label>
-            <select
+            <CityAutocomplete
               id="pickupLocation"
-              required
+              cities={cities}
               value={pickupLocation}
-              onChange={(event) => setPickupLocation(event.target.value)}
-            >
-              <option value="">{t("Select city")}</option>
-              {MONTENEGRO_CITIES.map((place) => (
-                <option key={`pickup-${place}`} value={place}>
-                  {place}
-                </option>
-              ))}
-            </select>
+              onChange={setPickupLocation}
+              placeholder={t("Select city")}
+              required
+            />
+            {fieldErrors.pickupLocation && (
+              <span className="field-error-inline">{t(fieldErrors.pickupLocation)}</span>
+            )}
           </div>
           <div className="reservation-row">
             <div className="reservation-field">
@@ -736,33 +905,49 @@ export default function Single1({ carItem }) {
             </div>
             <div className="reservation-field">
               <label htmlFor="pickupTime">{t("Pickup time")}</label>
-              <input
+              <select
                 id="pickupTime"
-                type="time"
                 required
                 value={pickupTime}
                 onChange={(event) => setPickupTime(event.target.value)}
-              />
+              >
+                <option value="">{t("Select time")}</option>
+                {TIME_OPTIONS.map((time) => (
+                  <option key={`pickup-${time}`} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+          <div className="reservation-field">
+            <label htmlFor="pickUpAdditionalLocation">
+              {t("Additional location details")}
+            </label>
+            <input
+              id="pickUpAdditionalLocation"
+              type="text"
+              placeholder={t("e.g. Airport Terminal 1")}
+              value={pickUpAdditionalLocation}
+              onChange={(e) => setPickUpAdditionalLocation(e.target.value)}
+            />
           </div>
         </fieldset>
         <fieldset className="reservation-fieldset">
           <legend>{t("Drop-off")}</legend>
           <div className="reservation-field">
             <label htmlFor="dropoffLocation">{t("Drop-off location")}</label>
-            <select
+            <CityAutocomplete
               id="dropoffLocation"
-              required
+              cities={cities}
               value={dropoffLocation}
-              onChange={(event) => setDropoffLocation(event.target.value)}
-            >
-              <option value="">{t("Select city")}</option>
-              {MONTENEGRO_CITIES.map((place) => (
-                <option key={`dropoff-${place}`} value={place}>
-                  {place}
-                </option>
-              ))}
-            </select>
+              onChange={setDropoffLocation}
+              placeholder={t("Select city")}
+              required
+            />
+            {fieldErrors.dropoffLocation && (
+              <span className="field-error-inline">{t(fieldErrors.dropoffLocation)}</span>
+            )}
           </div>
           <div className="reservation-row">
             <div className="reservation-field">
@@ -778,33 +963,81 @@ export default function Single1({ carItem }) {
             </div>
             <div className="reservation-field">
               <label htmlFor="dropoffTime">{t("Drop-off time")}</label>
-              <input
+              <select
                 id="dropoffTime"
-                type="time"
                 required
                 value={dropoffTime}
                 onChange={(event) => setDropoffTime(event.target.value)}
-              />
+              >
+                <option value="">{t("Select time")}</option>
+                {TIME_OPTIONS.map((time) => (
+                  <option key={`dropoff-${time}`} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+          <div className="reservation-field">
+            <label htmlFor="dropOffAdditionalLocation">
+              {t("Additional location details")}
+            </label>
+            <input
+              id="dropOffAdditionalLocation"
+              type="text"
+              placeholder={t("e.g. Airport Terminal 1")}
+              value={dropOffAdditionalLocation}
+              onChange={(e) => setDropOffAdditionalLocation(e.target.value)}
+            />
+          </div>
         </fieldset>
-        <div className="reservation-field">
-          <label htmlFor="message">{t("Message")}</label>
-          <textarea
-            id="message"
-            rows={3}
-            placeholder={t("Tell us what you need")}
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-          />
-        </div>
+        {reservationItems.length > 0 && (
+          <fieldset className="reservation-fieldset">
+            <legend>{t("Extras")}</legend>
+            <div className="reservation-extras">
+              {reservationItems.map((item) => (
+                <label
+                  key={item.code}
+                  className="reservation-extras__item"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedExtras.includes(item.code)}
+                    onChange={() => handleExtraToggle(item.code)}
+                  />
+                  <span>{t(item.code)}</span>
+                  <span className="reservation-extras__price">
+                    {item.price}€
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         {priceCheckError && <p className="field-error-text">{priceCheckError}</p>}
         {canReserve && calculatedPrice !== null && (
-          <p className="text">
-            {t("Price for selected period: {price}", {
-              price: formatCalculatedPrice(calculatedPrice, calculatedCurrency),
-            })}
-          </p>
+          <div className="price-breakdown">
+            {priceBreakdown?.reservationItemsPrices &&
+              (Array.isArray(priceBreakdown.reservationItemsPrices)
+                ? priceBreakdown.reservationItemsPrices
+                : Object.entries(priceBreakdown.reservationItemsPrices).map(
+                    ([code, price]) => ({ code, price })
+                  )
+              ).map((item) => (
+                <div key={item.code} className="price-breakdown__row">
+                  <span>{t(item.code)}</span>
+                  <span>
+                    {formatCalculatedPrice(item.price, calculatedCurrency)}
+                  </span>
+                </div>
+              ))}
+            <div className="price-breakdown__total">
+              <span>{t("Total")}</span>
+              <span>
+                {formatCalculatedPrice(calculatedPrice, calculatedCurrency)}
+              </span>
+            </div>
+          </div>
         )}
         {rentalChargePolicy && (
           <p className="text">
@@ -813,9 +1046,85 @@ export default function Single1({ carItem }) {
             })}
           </p>
         )}
-        {canReserve ? (
-          <button type="submit" className="side-btn reservation-submit">
-            {t("Reserve now")}
+        {canReserve && (
+          <fieldset className="reservation-fieldset">
+            <legend>{t("Your details")}</legend>
+            <div className="reservation-row">
+              <div className="reservation-field">
+                <label htmlFor="firstName">{t("First name")}</label>
+                <input
+                  id="firstName"
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                {fieldErrors.firstName && (
+                  <span className="field-error-inline">{t(fieldErrors.firstName)}</span>
+                )}
+              </div>
+              <div className="reservation-field">
+                <label htmlFor="lastName">{t("Last name")}</label>
+                <input
+                  id="lastName"
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+                {fieldErrors.lastName && (
+                  <span className="field-error-inline">{t(fieldErrors.lastName)}</span>
+                )}
+              </div>
+            </div>
+            <div className="reservation-field">
+              <label htmlFor="email">{t("Email")}</label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {fieldErrors.email && (
+                <span className="field-error-inline">{t(fieldErrors.email)}</span>
+              )}
+            </div>
+            <div className="reservation-field">
+              <label htmlFor="phoneNumber">{t("Phone number")}</label>
+              <PhoneInput
+                id="phoneNumber"
+                required
+                value={phoneNumber}
+                onChange={setPhoneNumber}
+              />
+              {fieldErrors.phoneNumber && (
+                <span className="field-error-inline">{t(fieldErrors.phoneNumber)}</span>
+              )}
+            </div>
+          </fieldset>
+        )}
+        {reservationError && (
+          <p className="alert-error">{reservationError}</p>
+        )}
+        {reservationStatus === "success" ? (
+          <div className="reservation-success">
+            <p>{t("Reservation created successfully!")}</p>
+            {reservationCode && (
+              <p>
+                {t("Booking code")}: <strong>{reservationCode}</strong>
+              </p>
+            )}
+          </div>
+        ) : canReserve ? (
+          <button
+            type="submit"
+            className="side-btn reservation-submit"
+            disabled={reservationStatus === "loading"}
+          >
+            {reservationStatus === "loading"
+              ? t("Sending...")
+              : t("Reserve now")}
           </button>
         ) : (
           <button

@@ -1,14 +1,56 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "@/components/common/LocalizedLink";
 import Image from "next/image";
-import { blogPosts } from "@/data/blogs";
 import { useLanguage } from "@/context/LanguageContext";
+import { fetchBlogs, normalizeInventoryImageUrl } from "@/lib/inventoryApi";
 import Slider from "react-slick";
+
+const mapApiBlog = (blog) => ({
+  id: blog.id,
+  title: blog.title,
+  description: blog.description,
+  author: blog.author || "Admin",
+  date: blog.publishedAt
+    ? new Date(blog.publishedAt).toLocaleDateString("sr-Latn-ME", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "",
+  slug: blog.alias,
+  src: blog.coverImagePath
+    ? normalizeInventoryImageUrl(blog.coverImagePath)
+    : blog.generatedCoverImage
+    ? normalizeInventoryImageUrl(blog.generatedCoverImage)
+    : "/images/placeholder.svg",
+  imageSrc: blog.coverImagePath
+    ? normalizeInventoryImageUrl(blog.coverImagePath)
+    : blog.generatedCoverImage
+    ? normalizeInventoryImageUrl(blog.generatedCoverImage)
+    : "/images/placeholder.svg",
+});
+
 export default function Blogs({ showBreadcrumb = false }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchBlogs(locale)
+      .then((data) => {
+        setPosts(data.map(mapApiBlog));
+        setLoading(false);
+      })
+      .catch(() => {
+        setPosts([]);
+        setLoading(false);
+      });
+  }, [locale]);
+
   const baseSlidesToShow = 3;
-  const totalSlides = blogPosts.length;
+  const totalSlides = posts.length;
   const slidesToShow = Math.max(1, Math.min(baseSlidesToShow, totalSlides));
   const slickOptions = {
     infinite: totalSlides > slidesToShow,
@@ -42,7 +84,9 @@ export default function Blogs({ showBreadcrumb = false }) {
   const renderCard = (post, index, wrapperClassName) => {
     const imageSrc = post.src || post.imageSrc;
     const wowDelay = post.wowDelay || post.delay || "0ms";
-    const postHref = post.slug ? `/${post.slug}` : `/blog-single/${post.id}`;
+    const postHref = post.slug
+      ? `/blog-single/${post.id}/${post.slug}`
+      : `/blog-single/${post.id}`;
     return (
       <div className={wrapperClassName} key={index}>
         <div className="inner-box wow fadeInUp" data-wow-delay={wowDelay}>
@@ -54,6 +98,7 @@ export default function Blogs({ showBreadcrumb = false }) {
                   src={imageSrc}
                   width={448}
                   height={300}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </Link>
             </figure>
@@ -70,6 +115,10 @@ export default function Blogs({ showBreadcrumb = false }) {
       </div>
     );
   };
+
+  if (loading) return null;
+  if (posts.length === 0) return null;
+
   return (
     <section className="blog-section">
       <div className="boxcar-container">
@@ -92,7 +141,7 @@ export default function Blogs({ showBreadcrumb = false }) {
         </div>
         {showBreadcrumb ? (
           <div className="row">
-            {blogPosts.map((post, index) =>
+            {posts.map((post, index) =>
               renderCard(
                 post,
                 index,
@@ -102,7 +151,7 @@ export default function Blogs({ showBreadcrumb = false }) {
           </div>
         ) : (
           <Slider {...slickOptions} className="blog-slider">
-            {blogPosts.map((post, index) =>
+            {posts.map((post, index) =>
               renderCard(post, index, "blog-block")
             )}
           </Slider>

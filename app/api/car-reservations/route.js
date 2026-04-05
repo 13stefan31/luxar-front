@@ -14,7 +14,7 @@ const buildTargetUrl = () => {
   if (!base) {
     return "";
   }
-  return `${base}/car-price/calculate`;
+  return `${base}/car-reservations`;
 };
 
 const readJsonBody = async (request) => {
@@ -29,62 +29,31 @@ export async function POST(request) {
   const targetUrl = buildTargetUrl();
   if (!targetUrl) {
     return NextResponse.json(
-      { error: "Car price endpoint nije konfigurisan." },
+      { error: "Reservation endpoint nije konfigurisan." },
       { status: 500 }
     );
   }
 
   const body = await readJsonBody(request);
-  const code = normalizeTextValue(body?.code);
-  const startingDate = normalizeTextValue(body?.startingDate);
-  const endingDate = normalizeTextValue(body?.endingDate);
-  const pickUpLocationId = body?.pickUpLocationId ?? null;
-  const dropOffLocationId = body?.dropOffLocationId ?? null;
-  const reservationItems = Array.isArray(body?.reservationItems)
-    ? body.reservationItems
-    : [];
-
-  if (!code || !startingDate || !endingDate) {
+  if (!body) {
     return NextResponse.json(
-      { error: "Nedostaju obavezna polja." },
+      { error: "Nedostaju podaci za rezervaciju." },
       { status: 400 }
     );
   }
 
   const headers = new Headers();
-  const accept = request.headers.get("accept");
-  if (accept) {
-    headers.set("accept", accept);
-  }
   headers.set("content-type", "application/json");
 
   const apiHeaders = getInventoryApiHeaders();
   if (apiHeaders["x-api-key"]) {
     headers.set("x-api-key", apiHeaders["x-api-key"]);
-  } else {
-    const incomingApiKey = request.headers.get("x-api-key");
-    if (incomingApiKey) {
-      headers.set("x-api-key", incomingApiKey);
-    }
-  }
-
-  const authHeader =
-    request.headers.get("authorization") || request.headers.get("Authorization");
-  if (authHeader) {
-    headers.set("authorization", authHeader);
   }
 
   const remoteResponse = await fetch(targetUrl, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      code,
-      startingDate,
-      endingDate,
-      pickUpLocationId,
-      dropOffLocationId,
-      reservationItems,
-    }),
+    body: JSON.stringify(body),
     cache: "no-store",
   });
 
@@ -99,4 +68,3 @@ export async function POST(request) {
     headers: responseHeaders,
   });
 }
-

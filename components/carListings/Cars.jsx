@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import TIME_OPTIONS from "@/lib/timeOptions";
 import Slider from "react-slick";
 import Image from "next/image";
 import SelectComponent from "../common/SelectComponent";
@@ -74,11 +75,18 @@ const toInputDateFormat = (value) => {
   return raw;
 };
 const toSearchDateFormat = (value) => {
-  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return value;
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
   }
-  return `${match[3]}.${match[2]}.${match[1]}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+  const localMatch = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (localMatch) {
+    return `${localMatch[3]}-${localMatch[2]}-${localMatch[1]}`;
+  }
+  return raw;
 };
 const splitDateTime = (value) => {
   if (!value) {
@@ -565,10 +573,14 @@ export default function Cars() {
           queryParams.set("endingDate", formattedEndingDate);
         }
         const queryString = queryParams.toString().replace(/\+/g, "%20");
-        const response = await fetch(`${API_URL}?${queryString}`, {
+        const requestUrl = `${API_URL}?${queryString}`;
+        console.log("Cars API request:", requestUrl);
+        const response = await fetch(requestUrl, {
           headers: getInventoryApiHeaders(),
         });
         if (!response.ok) {
+          const errorBody = await response.text().catch(() => "");
+          console.error("Cars API error:", response.status, errorBody);
           throw new Error("Request failed");
         }
         const payload = await response.json();
@@ -726,16 +738,19 @@ export default function Cars() {
                         <div className="form-column v2 col-6 col-lg-6">
                           <div className="form_boxes">
                             <label>{t("Pickup time")}</label>
-                            <input
-                              type="time"
-                              lang="en-GB"
-                              step="1800"
+                            <select
                               value={pickupTime}
                               onChange={(event) =>
                                 setPickupTime(event.target.value)
                               }
-                              placeholder={t("Pickup time")}
-                            />
+                            >
+                              <option value="">{t("Select time")}</option>
+                              {TIME_OPTIONS.map((time) => (
+                                <option key={`pickup-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       </form>
@@ -765,16 +780,19 @@ export default function Cars() {
                         <div className="form-column v2 col-6 col-lg-6">
                           <div className="form_boxes">
                             <label>{t("Drop-off time")}</label>
-                            <input
-                              type="time"
-                              lang="en-GB"
-                              step="1800"
+                            <select
                               value={dropoffTime}
                               onChange={(event) =>
                                 setDropoffTime(event.target.value)
                               }
-                              placeholder={t("Drop-off time")}
-                            />
+                            >
+                              <option value="">{t("Select time")}</option>
+                              {TIME_OPTIONS.map((time) => (
+                                <option key={`dropoff-${time}`} value={time}>
+                                  {time}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       </form>
