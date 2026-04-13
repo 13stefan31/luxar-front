@@ -22,6 +22,23 @@ const TRANSMISSION_OPTIONS = [
   { value: "SA", label: "SA (polu automatik)" },
 ];
 
+const EQUIPMENT_OPTIONS = [
+  { key: "equipment.audio", label: "Audio" },
+  { key: "equipment.parking_sensor", label: "Parking senzor" },
+  { key: "equipment.rearview_camera", label: "Kamera za vožnju unazad" },
+  { key: "equipment.car_play", label: "Apple CarPlay" },
+  { key: "equipment.navigation", label: "Navigacija" },
+  { key: "equipment.tempomat", label: "Tempomat" },
+  { key: "equipment.airbag", label: "Airbag" },
+  { key: "equipment.front_wheel_drive", label: "Prednji pogon" },
+  { key: "equipment.abs", label: "ABS" },
+  { key: "equipment.ebd", label: "EBD" },
+  { key: "equipment.esp", label: "ESP" },
+  { key: "equipment.benzin_hybrid", label: "Benzin Hybrid" },
+  { key: "equipment.air_condition", label: "Klima uređaj (oprema)" },
+  { key: "equipment.seat", label: "Kožna sjedišta", value: "kozna" },
+];
+
 const DEFAULT_VALUES = {
   vehicleName: "",
   enginePower: "",
@@ -75,16 +92,15 @@ export default function CarForm({
   const [galleryFiles, setGalleryFiles] = useState([]);
   const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [equipmentInput, setEquipmentInput] = useState({ name: "", value: "" });
   const coverObjectUrlRef = useRef("");
   const galleryObjectUrlsRef = useRef([]);
 
   useEffect(() => {
-    setValues((prev) => ({
+    setValues({
       ...DEFAULT_VALUES,
       ...initialValues,
       doesHaveAirConditioning: Boolean(initialValues.doesHaveAirConditioning),
-    }));
+    });
   }, [initialValues]);
 
   useEffect(() => {
@@ -268,31 +284,14 @@ export default function CarForm({
     onSubmit?.(payload);
   };
 
-  const handleAddEquipment = () => {
-    if (!equipmentInput.name.trim()) {
-      return;
-    }
-    setValues((prev) => ({
-      ...prev,
-      equipment: {
-        ...prev.equipment,
-        [equipmentInput.name.trim()]:
-          equipmentInput.value === ""
-            ? true
-            : equipmentInput.value.toLowerCase() === "true"
-            ? true
-            : equipmentInput.value.toLowerCase() === "false"
-            ? false
-            : equipmentInput.value,
-      },
-    }));
-    setEquipmentInput({ name: "", value: "" });
-  };
-
-  const removeEquipment = (key) => {
+  const handleEquipmentToggle = (key, value) => {
     setValues((prev) => {
       const equipment = { ...prev.equipment };
-      delete equipment[key];
+      if (equipment[key] !== undefined) {
+        delete equipment[key];
+      } else {
+        equipment[key] = value ?? true;
+      }
       return { ...prev, equipment };
     });
   };
@@ -508,35 +507,22 @@ export default function CarForm({
       </label>
       {showEquipmentSection && (
         <div className="equipment-form">
-          <strong>Dodatna oprema</strong>
-          <div className="equipment-inputs">
-            <input
-              type="text"
-              placeholder="Naziv opreme"
-              value={equipmentInput.name}
-              onChange={(event) => setEquipmentInput((prev) => ({ ...prev, name: event.target.value }))}
-            />
-            <input
-              type="text"
-              placeholder="Vrednost (true/false/tekst)"
-              value={equipmentInput.value}
-              onChange={(event) => setEquipmentInput((prev) => ({ ...prev, value: event.target.value }))}
-            />
-            <button type="button" className="theme-btn ghost" onClick={handleAddEquipment} disabled={equipmentDisabled}>
-              Dodaj
-            </button>
-          </div>
-          <div className="equipment-list">
-            {Object.entries(values.equipment || {}).map(([key, value]) => (
-              <div className="equipment-pill" key={key}>
-                <span>
-                  {key}: {String(value)}
-                </span>
-                <button type="button" onClick={() => removeEquipment(key)} aria-label="Ukloni opremu">
-                  ×
-                </button>
-              </div>
-            ))}
+          <div className="section-heading">Oprema</div>
+          <div className="equipment-checkbox-grid">
+            {EQUIPMENT_OPTIONS.map((opt) => {
+              const checked = values.equipment?.[opt.key] !== undefined;
+              return (
+                <label key={opt.key} className="equipment-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={equipmentDisabled}
+                    onChange={() => handleEquipmentToggle(opt.key, opt.value)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
       )}

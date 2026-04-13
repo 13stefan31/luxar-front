@@ -21,6 +21,23 @@ import {
 } from "@/lib/adminApi";
 import { INVENTORY_API_ORIGIN, normalizeInventoryImageUrl } from "@/lib/inventoryApi";
 
+const EQUIPMENT_OPTIONS = [
+  { key: "equipment.audio", label: "Audio" },
+  { key: "equipment.parking_sensor", label: "Parking senzor" },
+  { key: "equipment.rearview_camera", label: "Kamera za vožnju unazad" },
+  { key: "equipment.car_play", label: "Apple CarPlay" },
+  { key: "equipment.navigation", label: "Navigacija" },
+  { key: "equipment.tempomat", label: "Tempomat" },
+  { key: "equipment.airbag", label: "Airbag" },
+  { key: "equipment.front_wheel_drive", label: "Prednji pogon" },
+  { key: "equipment.abs", label: "ABS" },
+  { key: "equipment.ebd", label: "EBD" },
+  { key: "equipment.esp", label: "ESP" },
+  { key: "equipment.benzin_hybrid", label: "Benzin Hybrid" },
+  { key: "equipment.air_condition", label: "Klima uređaj (oprema)" },
+  { key: "equipment.seat", label: "Kožna sjedišta", value: "kozna" },
+];
+
 const ENGINE_TYPE_OPTIONS = [
   { value: "", label: "Odaberi" },
   { value: "P", label: "P (benzin)" },
@@ -513,11 +530,6 @@ export default function CarDetailsTabs({ carId }) {
   const [instanceSaving, setInstanceSaving] = useState({});
   const [expandedVariations, setExpandedVariations] = useState({});
   const [newEquipment, setNewEquipment] = useState({});
-  const [vehicleEquipmentDraft, setVehicleEquipmentDraft] = useState({
-    key: "",
-    value: "",
-    isActive: true,
-  });
   const [instanceDeleting, setInstanceDeleting] = useState({});
   const [instanceActivating, setInstanceActivating] = useState({});
   const [activeTab, setActiveTab] = useState("general");
@@ -814,52 +826,6 @@ export default function CarDetailsTabs({ carId }) {
     }));
   };
 
-  const handleVehicleEquipmentToggle = (key) => {
-    setFormValues((prev) => {
-      const equipment = { ...(prev.equipment || {}) };
-      equipment[key] = toggleBooleanLike(equipment[key]);
-      return { ...prev, equipment };
-    });
-  };
-
-  const handleVehicleEquipmentChange = (key, value) => {
-    setFormValues((prev) => ({
-      ...prev,
-      equipment: {
-        ...(prev.equipment || {}),
-        [key]: value,
-      },
-    }));
-  };
-
-  const handleRemoveVehicleEquipment = (key) => {
-    setFormValues((prev) => {
-      const equipment = { ...(prev.equipment || {}) };
-      delete equipment[key];
-      return { ...prev, equipment };
-    });
-  };
-
-  const handleAddVehicleEquipment = () => {
-    const trimmedKey = vehicleEquipmentDraft.key?.trim();
-    if (!trimmedKey) {
-      return;
-    }
-    const rawValue = vehicleEquipmentDraft.value;
-    const hasTextValue =
-      rawValue !== undefined && String(rawValue).trim().length > 0;
-    const normalizedValue = hasTextValue
-      ? String(rawValue).trim()
-      : vehicleEquipmentDraft.isActive ?? true;
-    setFormValues((prev) => ({
-      ...prev,
-      equipment: {
-        ...(prev.equipment || {}),
-        [trimmedKey]: normalizedValue,
-      },
-    }));
-    setVehicleEquipmentDraft({ key: "", value: "", isActive: true });
-  };
 
   const handleGeneralSave = async () => {
     if (!carId) {
@@ -2599,130 +2565,35 @@ export default function CarDetailsTabs({ carId }) {
                   />
                 </label>
               </div>
-              {(() => {
-                const equipmentEntries = Object.entries(formValues.equipment || {});
-                const draftValue = vehicleEquipmentDraft.value ?? "";
-                const draftHasText = String(draftValue).trim().length > 0;
-                const draftIsActive = vehicleEquipmentDraft.isActive ?? true;
-                return (
-                  <div className="vehicle-equipment">
-                    <p className="variation-section-title">Dodatna oprema</p>
-                    <div className="equipment-grid">
-                      {equipmentEntries.length ? (
-                        equipmentEntries.map(([key, value]) => {
-                          const booleanValue = coerceBooleanValue(value);
-                          const isTextValue =
-                            typeof value === "string" || typeof value === "number";
-                          if (isTextValue && booleanValue === null) {
-                            return (
-                              <label key={key} className="equipment-input">
-                                <div className="equipment-input-header">
-                                  <span>{key}</span>
-                                  <button
-                                    type="button"
-                                    className="equipment-remove"
-                                    aria-label="Ukloni opremu"
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      handleRemoveVehicleEquipment(key);
-                                    }}
-                                  >
-                                    -
-                                  </button>
-                                </div>
-                                <input
-                                  type="text"
-                                  value={value ?? ""}
-                                  onChange={(event) =>
-                                    handleVehicleEquipmentChange(
-                                      key,
-                                      event.target.value
-                                    )
-                                  }
-                                />
-                              </label>
-                            );
-                          }
-                          return (
-                            <label key={key} className="equipment-toggle">
-                              <input
-                                type="checkbox"
-                                checked={
-                                  booleanValue === null
-                                    ? Boolean(value)
-                                    : booleanValue
-                                }
-                                onChange={() => handleVehicleEquipmentToggle(key)}
-                              />
-                              <span>{key}</span>
-                              <button
-                                type="button"
-                                className="equipment-remove"
-                                aria-label="Ukloni opremu"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  handleRemoveVehicleEquipment(key);
-                                }}
-                              >
-                                -
-                              </button>
-                            </label>
-                          );
-                        })
-                      ) : (
-                        <p className="secondary">Bez dodatne opreme</p>
-                      )}
-                    </div>
-                    <div className="add-equipment">
-                      <input
-                        type="text"
-                        placeholder="Naziv opreme"
-                        value={vehicleEquipmentDraft.key || ""}
-                        onChange={(event) =>
-                          setVehicleEquipmentDraft((prev) => ({
-                            ...prev,
-                            key: event.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        type="text"
-                        placeholder="Vrijednost (opciono)"
-                        value={draftValue}
-                        onChange={(event) =>
-                          setVehicleEquipmentDraft((prev) => ({
-                            ...prev,
-                            value: event.target.value,
-                          }))
-                        }
-                      />
-                      <label className="equipment-flag">
+              <div className="vehicle-equipment">
+                <p className="variation-section-title">Dodatna oprema</p>
+                <div className="equipment-checkbox-grid">
+                  {EQUIPMENT_OPTIONS.map((opt) => {
+                    const current = formValues.equipment?.[opt.key];
+                    const checked = current !== undefined && current !== false;
+                    return (
+                      <label key={opt.key} className="equipment-checkbox-label">
                         <input
                           type="checkbox"
-                          checked={draftIsActive}
-                          disabled={draftHasText}
-                          aria-label="Aktivno"
-                          onChange={(event) =>
-                            setVehicleEquipmentDraft((prev) => ({
-                              ...prev,
-                              isActive: event.target.checked,
-                            }))
-                          }
+                          checked={checked}
+                          onChange={() => {
+                            setFormValues((prev) => {
+                              const equipment = { ...(prev.equipment || {}) };
+                              if (checked) {
+                                delete equipment[opt.key];
+                              } else {
+                                equipment[opt.key] = opt.value ?? true;
+                              }
+                              return { ...prev, equipment };
+                            });
+                          }}
                         />
+                        <span>{opt.label}</span>
                       </label>
-                      <button
-                        type="button"
-                        className="ghost-action"
-                        onClick={handleAddVehicleEquipment}
-                      >
-                        Dodaj opremu
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
+                    );
+                  })}
+                </div>
+              </div>
               <label className="full">
                 <span>Opis (ME)</span>
                 <textarea

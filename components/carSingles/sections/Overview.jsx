@@ -173,16 +173,22 @@ export default function Overview({ detail = {}, t, title }) {
       if (!formattedValue) {
         return null;
       }
+      const normalizedKey = key.replace(/^equipment\./, "");
       return {
-        label: humanizeText(key),
-        value: formattedValue,
+        label: translate(humanizeText(normalizedKey)),
+        value: translate(formattedValue),
       };
     })
     .filter(Boolean);
 
   return (
     <>
-      {title ? <h4 className="title">{title}</h4> : null}
+      {title ? (
+        <>
+          <h4 className="title">{title}</h4>
+          <p className="or-similar">{translate("or similar")}</p>
+        </>
+      ) : null}
       <div className="row">
         {columns.map((column, index) =>
           column.length ? (

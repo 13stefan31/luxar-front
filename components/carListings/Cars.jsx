@@ -1071,6 +1071,7 @@ export default function Cars() {
                                     {car.title}
                                   </Link>
                                 </h6>
+                                <p className="or-similar">{t("or similar")}</p>
                                 <div className="text">{car.description}</div>
                                 <ul>
                                   <li>

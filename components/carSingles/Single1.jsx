@@ -1160,6 +1160,10 @@ export default function Single1({ carItem }) {
             ))}
           </div>
         </div>
+        <div className="reservation-deposit-info">
+          <i className="ri-secure-payment-line" aria-hidden="true" />
+          <span>{t("A refundable security deposit of €100 is required at vehicle pickup.")}</span>
+        </div>
       </form>
     </div>
   );
