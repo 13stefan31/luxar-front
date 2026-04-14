@@ -83,7 +83,7 @@ export default function MobileMenu() {
                     <Image
                       alt="Luxar rent a car"
                       title="Luxar rent a car"
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       width={108}
                       height={26}
                       className="mobile-menu-logo__img"

@@ -10,8 +10,8 @@ const BLOG_ITEM = {
   title: "Montenegro Road Trip: Renting a Car To Experience Montenegro in 2026",
   slug: "montenegro-road-trip",
   description: "Why public transport will limit you + best regions to explore by car",
-  src: "/images/banner/IMG_0859.JPG",
-  imageSrc: "/images/banner/IMG_0859.JPG",
+  src: "/images/banner/IMG_0859.webp",
+  imageSrc: "/images/banner/IMG_0859.webp",
   date: "11.02.2026",
   author: "Admin",
 };

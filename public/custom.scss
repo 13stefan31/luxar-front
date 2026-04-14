@@ -835,7 +835,7 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   content: "";
   position: absolute;
   inset: -20px;
-  background-image: url("/images/banner/IMG_0859.JPG");
+  background-image: url("/images/banner/IMG_0859.webp");
   background-size: cover;
   background-position: center;
   /* transform: scale(1.03); */
@@ -1683,8 +1683,14 @@ html[lang="me"] .widget-accordion .block .acc-content .content .text::first-lett
   justify-content: center;
   margin-bottom: 0;
   border: none;
-  background: var(--theme-color-dark);
-  color: #fff;
+  background: var(--brand-gold);
+  color: #fff !important;
+}
+
+.car-block-three .inner-box .content-box .btn-box .price-with-info .price-info i,
+.car-block-four .inner-box .content-box .btn-box .price-with-info .price-info i,
+.car-block-two .inner-box .content-box .btn-box .price-with-info .price-info i {
+  color: #fff !important;
 }
 
 .car-block-three .inner-box .content-box .btn-box .price-with-info .price-tooltip-text,
@@ -3696,6 +3702,10 @@ a:hover {
   color: var(--brand-gold);
 }
 
+.or-similar {
+  font-style: normal;
+}
+
 .faq-highlight {
   color: var(--brand-gold);
   background: rgba(201, 162, 78, 0.18);
@@ -4062,7 +4072,7 @@ a:hover {
 
 @media (max-width: 767px) {
   .boxcar-banner-section-v1::before {
-    background-image: url("/images/banner/IMG_0865-mobile.jpg");
+    background-image: url("/images/banner/IMG_0865-mobile.webp");
     background-position: 41% 35%;
   }
 

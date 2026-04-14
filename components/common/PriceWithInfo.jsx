@@ -43,7 +43,7 @@ export default function PriceWithInfo({
           aria-describedby={tooltipId}
           tabIndex={0}
         >
-          <i className="ri-information-line" aria-hidden="true" />
+          <span aria-hidden="true" style={{ fontStyle: "italic", fontFamily: "Georgia, serif", fontWeight: "700", fontSize: "0.85em", lineHeight: 1 }}>i</span>
           <span id={tooltipId} role="tooltip" className="price-tooltip-text">
             {infoLabel}
           </span>

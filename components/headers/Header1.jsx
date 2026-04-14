@@ -64,7 +64,7 @@ export default function Header1({
                     <Image
                       alt=""
                         title="Luxar rent a car"
-                      src="/images/logo.png"
+                      src="/images/logo.webp"
                       width={108}
                       height={26}
                     />

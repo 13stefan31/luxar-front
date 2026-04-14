@@ -132,9 +132,53 @@ export const accordionData = [
     isActive: false,
   },
   {
-    question: "Can I sleep in my car in Montenegro?",
+    question: "What are the requirements for renting a vehicle?",
     answer:
-      "Sleeping in a car is not recommended or officially allowed in most areas. Accommodation options are widely available and affordable across the country.",
+      "To rent a vehicle, you must have a valid driver's license and a valid personal identification document.",
+    isActive: false,
+  },
+  {
+    question: "Which documents are required for car rental?",
+    answer: "A valid driver's license is required.",
+    isActive: false,
+  },
+  {
+    question: "Is it possible to rent a car without a credit card?",
+    answer:
+      "Yes, it is possible to rent a car without a credit card. Cash payment is accepted.",
+    isActive: false,
+  },
+  {
+    question: "How much is the deposit and when is it refunded?",
+    answer:
+      "The deposit ranges from €100 to €200 and is refunded on the day the vehicle is returned, provided the car is in proper condition.",
+    isActive: false,
+  },
+  {
+    question: "Is insurance included in the rental price?",
+    answer: "Yes, basic insurance is included in the rental price.",
+    isActive: false,
+  },
+  {
+    question: "Is there a mileage limit?",
+    answer: "No, unlimited mileage is included.",
+    isActive: false,
+  },
+  {
+    question: "Can I add an additional driver?",
+    answer: "Yes, an additional driver can be added.",
+    isActive: false,
+  },
+  {
+    question: "What should I do in case of an accident or breakdown?",
+    answer:
+      "In case of an accident or breakdown, please contact the vehicle owner immediately and then notify the police.",
+    isActive: false,
+  },
+  {
+    question: "Can I cancel my reservation?",
+    answer:
+      "Yes, reservations can be canceled; however, the advance payment may be non-refundable.",
     isActive: false,
   },
   {

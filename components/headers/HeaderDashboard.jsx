@@ -29,7 +29,7 @@ export default function HeaderDashboard() {
                   title="Luxar rent a car"
                   width={108}
                   height={26}
-                  src="/images/logo.png"
+                  src="/images/logo.webp"
                 />
               </div>
             </div>

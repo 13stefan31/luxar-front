@@ -1109,6 +1109,10 @@ export default function Cars() {
                                         />
                                       </span>
                                     )}
+                                    <span className="or-similar" style={{ display: "inline-flex", alignItems: "center", gap: "2px", margin: "4px 0 0", color: "#999" }}>
+                                      <span>*</span>
+                                      <span>{t("deposit_label")}</span>
+                                    </span>
                                   </div>
                                   <Link
                                     href={buildDetailHref(car)}
