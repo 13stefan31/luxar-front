@@ -32,13 +32,7 @@ License: copyright commercial
 26. Main Footer
 **********************************************/
 
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
-@import url("animate.css");
-@import url("owl.css");
-@import url("jquery.fancybox.min.css");
-@import url("linear.css");
-@import url("fontawesome.css");
-@import url("flaticon.css");
+/* font, animate, owl, fancybox, linear, fontawesome, flaticon are imported via main.scss */
 
 :root {
   --theme-color-light: #ffffff;
@@ -66,8 +60,8 @@ License: copyright commercial
   --headings-color: #050b20;
   --link-color: var(--headings-color);
   --link-hover-color: var(--headings-color);
-  --title-font: "DM Sans", sans-serif;
-  --text-font: "DM Sans", sans-serif;
+  --title-font: var(--font-dm-sans, "DM Sans", sans-serif);
+  --text-font: var(--font-dm-sans, "DM Sans", sans-serif);
   --title-font2: "Bebas Neue", sans-serif;
   --body-font-size: 16px;
   --body-line-height: 28px;

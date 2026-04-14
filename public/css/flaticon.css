@@ -1,5 +1,6 @@
 @font-face {
     font-family: "flaticon_boxcar";
+    font-display: swap;
     src: url("/fonts/flaticon_boxcar.ttf") format("truetype"),
 url("/fonts/flaticon_boxcar.woff") format("woff"),
 url("/fonts/flaticon_boxcar.woff2") format("woff2"),

@@ -881,6 +881,7 @@ export default function Cars() {
                 </div>
               )}
               {groupedCars.map((group, groupIndex) => {
+                const isFirstRow = groupIndex === 0;
                 const expandedCar = group.find((car) => car.id === expandedId);
                 const normalizedVariants = expandedCar
                   ? expandedCar.variants.map((variant, index) => ({
@@ -980,7 +981,7 @@ export default function Cars() {
                       expandedCar ? " has-expanded" : ""
                     }`}
                   >
-                    {group.map((car) => {
+                    {group.map((car, carIndex) => {
                       const variantCount = car.variants
                         ? car.variants.length
                         : 0;
@@ -1024,6 +1025,8 @@ export default function Cars() {
                                     src={car.imgSrc}
                                     width={329}
                                     height={220}
+                                    sizes="(max-width: 576px) 100vw, (max-width: 992px) 50vw, 33vw"
+                                    priority={isFirstRow}
                                   />
                                 </Link>
                               </figure>

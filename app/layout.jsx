@@ -11,9 +11,18 @@ import BackToTop from "@/components/common/BackToTop";
 import { LanguageProvider } from "@/context/LanguageContext";
 import FloatingActionProvider from "@/context/FloatingActionContext";
 import { Toaster } from "react-hot-toast";
+import { DM_Sans } from "next/font/google";
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  axes: ["opsz"],
+  display: "swap",
+  variable: "--font-dm-sans",
+});
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="me">
+    <html lang="me" className={dmSans.variable}>
       <head>
         <link rel="icon" href="/images/favicon/favicon.ico" sizes="any" />
         <link
@@ -35,20 +44,6 @@ export default function RootLayout({ children }) {
         />
         <link rel="manifest" href="/images/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
-          rel="stylesheet"
-          media="print"
-          onLoad="this.media='all'"
-        />
-        <noscript>
-          <link
-            href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
-            rel="stylesheet"
-          />
-        </noscript>
         <link
           rel="preload"
           href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
