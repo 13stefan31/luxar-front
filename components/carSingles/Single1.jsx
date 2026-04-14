@@ -261,6 +261,10 @@ const VALIDATION_MESSAGES = {
   "reservation.drop_off_date.invalid": "Invalid drop-off date.",
   "reservation.vehicle_code.invalid": "Invalid vehicle code.",
   "reservation.reservation_items.invalid": "Invalid reservation items.",
+  "reservation.pick_up_additional_location.required": "Additional pick-up location details are required.",
+  "reservation.drop_off_additional_location.required": "Additional drop-off location details are required.",
+  "reservation.pick_up_additional_location.blank": "Additional pick-up location details are required.",
+  "reservation.drop_off_additional_location.blank": "Additional drop-off location details are required.",
   "reservation.missing_name": "First name and last name are required.",
   "reservation.missing_email": "Email is required.",
   "reservation.missing_phone_number": "Phone number is required.",
@@ -570,6 +574,33 @@ export default function Single1({ carItem }) {
     setIsReservationModalOpen(true);
   }, []);
 
+  const resetReservationForm = useCallback(() => {
+    setPickupLocation("");
+    setPickupDate("");
+    setPickupTime("");
+    setDropoffLocation("");
+    setDropoffDate("");
+    setDropoffTime("");
+    setPickUpAdditionalLocation("");
+    setDropOffAdditionalLocation("");
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhoneNumber("");
+    setSelectedExtras([]);
+    setPriceCheckStatus("idle");
+    setPriceCheckError("");
+    setReservationError("");
+    setCalculatedPrice(null);
+    setCalculatedCurrency("EUR");
+    setPriceBreakdown(null);
+    setReservationCode("");
+    setFieldErrors({});
+    setCheckedRangeKey("");
+    setReservationStatus("idle");
+    setIsReservationModalOpen(false);
+  }, []);
+
   const closeReservationModal = useCallback(() => {
     setIsReservationModalOpen(false);
   }, []);
@@ -637,6 +668,7 @@ export default function Single1({ carItem }) {
     }
     setPriceCheckStatus("idle");
     setPriceCheckError("");
+    setReservationError("");
     setCalculatedPrice(null);
     setCalculatedCurrency("EUR");
     setPriceBreakdown(null);
@@ -929,8 +961,16 @@ export default function Single1({ carItem }) {
               type="text"
               placeholder={t("e.g. Airport Terminal 1")}
               value={pickUpAdditionalLocation}
-              onChange={(e) => setPickUpAdditionalLocation(e.target.value)}
+              onChange={(e) => {
+                setPickUpAdditionalLocation(e.target.value);
+                if (fieldErrors.pickUpAdditionalLocation) {
+                  setFieldErrors((prev) => { const n = { ...prev }; delete n.pickUpAdditionalLocation; return n; });
+                }
+              }}
             />
+            {fieldErrors.pickUpAdditionalLocation && (
+              <span className="field-error-inline">{t(fieldErrors.pickUpAdditionalLocation)}</span>
+            )}
           </div>
         </fieldset>
         <fieldset className="reservation-fieldset">
@@ -987,8 +1027,16 @@ export default function Single1({ carItem }) {
               type="text"
               placeholder={t("e.g. Airport Terminal 1")}
               value={dropOffAdditionalLocation}
-              onChange={(e) => setDropOffAdditionalLocation(e.target.value)}
+              onChange={(e) => {
+                setDropOffAdditionalLocation(e.target.value);
+                if (fieldErrors.dropOffAdditionalLocation) {
+                  setFieldErrors((prev) => { const n = { ...prev }; delete n.dropOffAdditionalLocation; return n; });
+                }
+              }}
             />
+            {fieldErrors.dropOffAdditionalLocation && (
+              <span className="field-error-inline">{t(fieldErrors.dropOffAdditionalLocation)}</span>
+            )}
           </div>
         </fieldset>
         {reservationItems.length > 0 && (
@@ -1107,16 +1155,7 @@ export default function Single1({ carItem }) {
         {reservationError && (
           <p className="alert-error">{reservationError}</p>
         )}
-        {reservationStatus === "success" ? (
-          <div className="reservation-success">
-            <p>{t("Reservation created successfully!")}</p>
-            {reservationCode && (
-              <p>
-                {t("Booking code")}: <strong>{reservationCode}</strong>
-              </p>
-            )}
-          </div>
-        ) : canReserve ? (
+        {canReserve ? (
           <button
             type="submit"
             className="side-btn reservation-submit"
@@ -1338,6 +1377,91 @@ export default function Single1({ carItem }) {
             <div className="reservation-box reservation-box--modal">
               {reservationForm}
             </div>
+          </div>
+        </div>
+      )}
+      {reservationStatus === "success" && (
+        <div
+          className="reservation-success-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="success-modal-title"
+        >
+          <div
+            className="reservation-success-modal__overlay"
+            onClick={resetReservationForm}
+          />
+          <div className="reservation-success-modal__content">
+            <div className="reservation-success-modal__icon">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none" aria-hidden="true">
+                <path d="M7 19.5L15 27.5L31 11" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 id="success-modal-title" className="reservation-success-modal__title">
+              {t("Reservation created successfully!")}
+            </h3>
+            <p className="reservation-success-modal__subtitle">
+              {t("We'll contact you shortly to confirm your booking.")}
+            </p>
+
+            <div className="reservation-success-modal__details">
+              {carItem?.title && (
+                <div className="reservation-success-modal__row">
+                  <span className="reservation-success-modal__label">{t("Vehicle")}</span>
+                  <span className="reservation-success-modal__value">{carItem.title}</span>
+                </div>
+              )}
+              {reservationCode && (
+                <div className="reservation-success-modal__row reservation-success-modal__row--code">
+                  <span className="reservation-success-modal__label">{t("Booking code")}</span>
+                  <strong className="reservation-success-modal__value reservation-success-modal__value--code">
+                    {reservationCode}
+                  </strong>
+                </div>
+              )}
+              {pickupDate && (
+                <div className="reservation-success-modal__row">
+                  <span className="reservation-success-modal__label">{t("Pick-up")}</span>
+                  <span className="reservation-success-modal__value">
+                    {pickupLocation && <>{pickupLocation}, </>}
+                    {pickupDate.split("-").reverse().join(".")}{pickupTime && ` ${pickupTime}`}
+                  </span>
+                </div>
+              )}
+              {dropoffDate && (
+                <div className="reservation-success-modal__row">
+                  <span className="reservation-success-modal__label">{t("Drop-off")}</span>
+                  <span className="reservation-success-modal__value">
+                    {dropoffLocation && <>{dropoffLocation}, </>}
+                    {dropoffDate.split("-").reverse().join(".")}{dropoffTime && ` ${dropoffTime}`}
+                  </span>
+                </div>
+              )}
+              {Number.isFinite(calculatedPrice) && (
+                <div className="reservation-success-modal__row">
+                  <span className="reservation-success-modal__label">{t("Total")}</span>
+                  <span className="reservation-success-modal__value reservation-success-modal__value--price">
+                    {calculatedPrice} {calculatedCurrency}
+                  </span>
+                </div>
+              )}
+              {(firstName || lastName) && (
+                <div className="reservation-success-modal__row">
+                  <span className="reservation-success-modal__label">{t("Name")}</span>
+                  <span className="reservation-success-modal__value">
+                    {[firstName, lastName].filter(Boolean).join(" ")}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="reservation-success-modal__close-btn"
+              onClick={resetReservationForm}
+            >
+              {t("Close")}
+            </button>
           </div>
         </div>
       )}
