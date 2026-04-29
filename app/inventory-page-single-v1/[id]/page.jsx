@@ -6,6 +6,10 @@ import {
   INVENTORY_API_ROOT,
   normalizeInventoryImageUrl,
 } from "@/lib/inventoryApi";
+import { getPreferredLocale } from "@/lib/metadataHelper";
+import { localizePath } from "@/lib/i18nRoutes";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
 
 const FALLBACK_IMAGE = "/images/car.webp";
 const FUEL_LABELS = {
@@ -189,13 +193,68 @@ const loadCar = async ({ params, searchParams }) => {
   return { carItem, carData };
 };
 
+const DESCRIPTION_FIELDS = {
+  en: ["descriptionEn", "description_en"],
+  me: ["descriptionMne", "description_mne"],
+  ru: ["descriptionRu", "description_ru"],
+};
+
+const TITLE_SUFFIX = {
+  en: "– rent a car | LUXAR TRADE Montenegro",
+  me: "– rent a car | LUXAR TRADE Crna Gora",
+  ru: "– аренда авто | LUXAR TRADE Черногория",
+};
+
+const HREFLANG = { en: "en", me: "sr-ME", ru: "ru" };
+
+const resolveCarDescription = (carData, locale) => {
+  const raw = carData || {};
+  const fields = DESCRIPTION_FIELDS[locale] || DESCRIPTION_FIELDS.en;
+  let text = "";
+  for (const field of fields) {
+    if (raw[field]) { text = raw[field]; break; }
+  }
+  if (!text) {
+    for (const field of DESCRIPTION_FIELDS.en) {
+      if (raw[field]) { text = raw[field]; break; }
+    }
+  }
+  const stripped = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!stripped) return "";
+  if (stripped.length <= 160) return stripped;
+  const cut = stripped.slice(0, 157);
+  return cut.slice(0, cut.lastIndexOf(" ")) + "...";
+};
+
 export async function generateMetadata({ params, searchParams }) {
-  const { carItem } = await loadCar({ params, searchParams });
+  const locale = getPreferredLocale();
+  const { carItem, carData } = await loadCar({ params, searchParams });
   const label = carItem?.title || "Vehicle";
-  const description = carItem?.description || "LUXAR TRADE - rent a car";
+  const suffix = TITLE_SUFFIX[locale] || TITLE_SUFFIX.en;
+  const description =
+    resolveCarDescription(carData, locale) ||
+    carItem?.description ||
+    "LUXAR TRADE - rent a car";
+
+  const carPath = `/car/${params.id}`;
+  const ogImage = carItem?.images?.[0] || "/images/car.webp";
+
   return {
-    title: `${label} || LUXAR TRADE - rent a car`,
+    title: `${label} ${suffix}`,
     description,
+    openGraph: {
+      title: `${label} ${suffix}`,
+      description,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: label }],
+    },
+    alternates: {
+      languages: Object.fromEntries(
+        Object.entries(HREFLANG).map(([loc, hreflang]) => [
+          hreflang,
+          `${SITE_URL}${localizePath(carPath, loc)}`,
+        ])
+      ),
+    },
   };
 }
 

@@ -5,6 +5,7 @@ import UiElements from "@/components/otherPages/UiElements";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "UI Elements || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

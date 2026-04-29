@@ -1,12 +1,16 @@
 import Blogs from "@/components/homes/home-1/Blogs";
 import Footer1 from "@/components/footers/Footer1";
 import Header1 from "@/components/headers/Header1";
+import { createLocalizedMetadata } from "@/lib/metadataHelper";
 import React from "react";
 
-export const metadata = {
-  title: "Blog List 1 || LUXAR TRADE - rent a car",
-  description: "LUXAR TRADE - rent a car",
-};
+export const generateMetadata = createLocalizedMetadata({
+  titleKey: "meta.blog.title",
+  titleFallback: "Car Rental Tips & Montenegro Travel Blog | LUXAR TRADE",
+  descriptionKey: "meta.blog.description",
+  descriptionFallback: "Travel guides, car rental tips, and road trip inspiration for Montenegro.",
+  appendBrandSuffix: false,
+});
 
 export default function BlogListingPage1() {
   return (

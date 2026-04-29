@@ -6,10 +6,11 @@ import { createLocalizedMetadata } from "@/lib/metadataHelper";
 import React from "react";
 
 export const generateMetadata = createLocalizedMetadata({
-  titleKey: "Cars",
-  titleFallback: "Cars",
-  descriptionKey: "Car rental",
-  descriptionFallback: "Car rental",
+  titleKey: "meta.cars.title",
+  titleFallback: "Rent a Car in Montenegro – Browse Our Fleet",
+  descriptionKey: "meta.cars.description",
+  descriptionFallback: "Browse our full fleet of rental cars in Montenegro. Easy online booking.",
+  appendBrandSuffix: false,
 });
 
 export default function CarsPage() {

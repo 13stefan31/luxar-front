@@ -5,6 +5,7 @@ import Checkout from "@/components/shop/Checkout";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Checkout || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

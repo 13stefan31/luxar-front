@@ -5,6 +5,7 @@ import Compare from "@/components/otherPages/Compare";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Compare || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

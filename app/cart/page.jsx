@@ -5,6 +5,7 @@ import Cart from "@/components/shop/Cart";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Cart || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

@@ -25,7 +25,7 @@ export async function generateMetadata({ searchParams }) {
     descriptionFallback:
       "Why public transport will limit you + best regions to explore by car",
   });
-  const metadata = await metadataBuilder({ searchParams });
+  const metadata = await metadataBuilder({});
   return {
     ...metadata,
     openGraph: {

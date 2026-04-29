@@ -2,6 +2,7 @@ import Invoice from "@/components/otherPages/Invoice";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Invoice || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

@@ -6,6 +6,7 @@ import { dealers } from "@/data/dealers";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Dealer Single || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { stripLocaleFromPath, toInternalPath } from "./lib/i18nRoutes";
+import { stripLocaleFromPath, toInternalPath, defaultLocale } from "./lib/i18nRoutes";
 
 const PUBLIC_FILE = /\.(.*)$/;
 
@@ -33,7 +33,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (!hadLocalePrefix) {
-    return NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-locale", defaultLocale);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   const internalPath = toInternalPath(pathWithoutLocale, locale);
@@ -41,6 +44,7 @@ export function middleware(request: NextRequest) {
   url.pathname = internalPath;
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-locale", locale);
+  requestHeaders.set("x-pathname", internalPath);
   return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
 }
 

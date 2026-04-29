@@ -1,17 +1,8 @@
-"use client";
-import FilterSidebar from "@/components/common/FilterSidebar";
-import ClientBoot from "@/components/common/ClientBoot";
-import "../public/main.scss";
-import "photoswipe/dist/photoswipe.css";
-import "rc-slider/assets/index.css";
-import { Suspense } from "react";
-import MobileMenu from "@/components/headers/MobileMenu";
-import Context from "@/context/Context";
-import BackToTop from "@/components/common/BackToTop";
-import { LanguageProvider } from "@/context/LanguageContext";
-import FloatingActionProvider from "@/context/FloatingActionContext";
-import { Toaster } from "react-hot-toast";
+import ClientProviders from "./ClientProviders";
 import { DM_Sans } from "next/font/google";
+import { headers } from "next/headers";
+
+const LANG_CODES = { en: "en", me: "sr-ME", ru: "ru" };
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -20,58 +11,62 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
+
+export const metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "LUXAR TRADE – rent a car",
+    template: "%s | LUXAR TRADE – rent a car",
+  },
+  description: "LUXAR TRADE – rent a car",
+  icons: {
+    icon: [
+      { url: "/images/favicon/favicon.ico", sizes: "any" },
+      { url: "/images/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/images/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: { url: "/images/favicon/apple-touch-icon.png", sizes: "180x180" },
+  },
+  manifest: "/images/favicon/site.webmanifest",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    title: "LUXAR TRADE – rent a car",
+    description: "LUXAR TRADE – rent a car",
+    siteName: "LUXAR TRADE",
+    images: [
+      {
+        url: "/images/car.webp",
+        width: 1200,
+        height: 630,
+        alt: "LUXAR TRADE – rent a car",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LUXAR TRADE – rent a car",
+    description: "LUXAR TRADE – rent a car",
+    images: ["/images/car.webp"],
+  },
+};
+
 export default function RootLayout({ children }) {
+  const locale = headers().get("x-locale") || "me";
+  const lang = LANG_CODES[locale] || "sr-ME";
   return (
-    <html lang="me" className={dmSans.variable}>
+    <html lang={lang} className={dmSans.variable}>
       <head>
-        <link rel="icon" href="/images/favicon/favicon.ico" sizes="any" />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/images/favicon/favicon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/images/favicon/favicon-16x16.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/images/favicon/apple-touch-icon.png"
-        />
-        <link rel="manifest" href="/images/favicon/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <link
-          rel="preload"
+          rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
-          as="style"
-          onLoad="this.rel='stylesheet'"
         />
-        <noscript>
-          <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
-          />
-        </noscript>
       </head>
       <body>
-        <Suspense fallback={null}>
-          <FloatingActionProvider>
-            <LanguageProvider>
-              <Context>
-                <MobileMenu />
-                <div className="boxcar-wrapper">{children}</div>
-                <FilterSidebar />
-                <ClientBoot />
-                <BackToTop />
-              </Context>
-            </LanguageProvider>
-          </FloatingActionProvider>
-        </Suspense>
-        <Toaster position="top-right" />
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

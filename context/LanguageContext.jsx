@@ -65,7 +65,6 @@ export function LanguageProvider({ children }) {
       if (!nextLocale || nextLocale === locale) {
         return;
       }
-      setLocaleState(nextLocale);
       const queryString = searchParamsString;
       const safePathname = pathname || "/";
       const currentPath = queryString
@@ -73,10 +72,12 @@ export function LanguageProvider({ children }) {
         : safePathname;
       const localizedPath = localizeHref(currentPath, nextLocale);
       if (localizedPath && localizedPath !== currentPath) {
-        router.push(localizedPath);
+        // Full reload ensures server re-renders with correct x-locale header,
+        // so generateMetadata returns the right language for SEO tags.
+        window.location.href = localizedPath;
       }
     },
-    [locale, pathname, router, searchParamsString]
+    [locale, pathname, searchParamsString]
   );
 
   const value = useMemo(

@@ -2,6 +2,7 @@ import AdminLoginSection from "./AdminLoginSection";
 import Header1 from "@/components/headers/Header1";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Admin Login || LUXAR TRADE",
   description: "Sign in to the LUXAR TRADE admin dashboard.",
 };

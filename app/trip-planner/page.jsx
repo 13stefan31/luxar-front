@@ -1,13 +1,16 @@
 import Footer1 from "@/components/footers/Footer1";
 import Header1 from "@/components/headers/Header1";
 import TripPlanner from "@/components/otherPages/TripPlanner";
-
+import { createLocalizedMetadata } from "@/lib/metadataHelper";
 import React from "react";
 
-export const metadata = {
-  title: "Trip Planner || LUXAR TRADE - rent a car",
-  description: "LUXAR TRADE - rent a car",
-};
+export const generateMetadata = createLocalizedMetadata({
+  titleKey: "meta.tripPlanner.title",
+  titleFallback: "Plan Your Montenegro Road Trip | LUXAR TRADE",
+  descriptionKey: "meta.tripPlanner.description",
+  descriptionFallback: "Use our trip planner to map out your Montenegro road trip. Choose pickup location, dates, and vehicle type.",
+  appendBrandSuffix: false,
+});
 
 export default function TripPlannerPage() {
   return (

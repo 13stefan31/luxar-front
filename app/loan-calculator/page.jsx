@@ -5,6 +5,7 @@ import LoanCalculator from "@/components/otherPages/LoanCalculator";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Loan Calculator || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

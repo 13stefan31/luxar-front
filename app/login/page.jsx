@@ -5,6 +5,7 @@ import Login from "@/components/otherPages/Login";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Login || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };

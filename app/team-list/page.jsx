@@ -5,6 +5,7 @@ import TeamList from "@/components/otherPages/TeamList";
 import React from "react";
 
 export const metadata = {
+  robots: { index: false, follow: false },
   title: "Team List || LUXAR TRADE - rent a car",
   description: "LUXAR TRADE - rent a car",
 };
