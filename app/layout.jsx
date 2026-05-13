@@ -51,6 +51,9 @@ export const metadata = {
     description: "LUXAR TRADE – rent a car",
     images: ["/images/car.webp"],
   },
+  verification: {
+    google: "ZbyhfvTEW1nf8uN-CgCZclAvDAFbpssiV7dMnt1Pe6s",
+  },
 };
 
 export default function RootLayout({ children }) {
