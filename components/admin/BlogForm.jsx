@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef, useMemo, dynamic } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import nextDynamic from "next/dynamic";
 import {
@@ -9,6 +9,7 @@ import {
   adminLogout,
 } from "@/lib/adminApi";
 import { normalizeInventoryImageUrl } from "@/lib/inventoryApi";
+import { parseTocFromHtml, injectHeadingIds } from "@/lib/tocUtils";
 
 const ReactQuill = nextDynamic(() => import("react-quill-new"), {
   ssr: false,
@@ -46,11 +47,45 @@ const QUILL_MODULES = {
   toolbar: [
     [{ header: [1, 2, 3, false] }],
     ["bold", "italic", "underline", "strike"],
+    [{ align: [] }],
     [{ list: "ordered" }, { list: "bullet" }],
     ["blockquote", "link", "image"],
     ["clean"],
   ],
+  clipboard: {
+    matchVisual: false,
+  },
 };
+
+const TOC_LABEL = { me: "Sadržaj", en: "Table of Contents", ru: "Содержание" };
+
+function FieldHint({ text }) {
+  return (
+    <span className="field-hint">
+      ?
+      <span className="field-hint__tooltip">{text}</span>
+    </span>
+  );
+}
+
+// Replace &nbsp; injected by Quill's justify alignment with regular spaces
+function cleanQuillHtml(html) {
+  if (!html) return html;
+  return html.replace(/&nbsp;/g, " ").replace(/  +/g, " ");
+}
+
+async function formatHtml(html) {
+  if (!html) return html;
+  const mod = await import("js-beautify");
+  const beautify = mod.html ?? mod.default?.html;
+  return beautify(html, {
+    indent_size: 2,
+    wrap_line_length: 0,
+    preserve_newlines: false,
+    end_with_newline: false,
+    extra_liners: [],
+  });
+}
 
 export default function BlogForm({ blogId }) {
   const router = useRouter();
@@ -63,6 +98,7 @@ export default function BlogForm({ blogId }) {
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [existingImage, setExistingImage] = useState("");
+  const [editorTab, setEditorTab] = useState("visual");
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -81,7 +117,7 @@ export default function BlogForm({ blogId }) {
         setForm({
           title: data.title || "",
           description: data.description || "",
-          content: data.content || "",
+          content: cleanQuillHtml(data.content || ""),
           language: data.language || "me",
           isPublished: Boolean(data.isPublished),
           metaDescription: data.metaDescription || "",
@@ -117,7 +153,6 @@ export default function BlogForm({ blogId }) {
     const p = err?.payload;
     const errors = {};
 
-    // Format 1: { messageCode: "validation.failed", parameters: [{field, message}] }
     if (p?.messageCode === "validation.failed" && Array.isArray(p?.parameters)) {
       for (const param of p.parameters) {
         const field = FIELD_MAP[param.field] || param.field;
@@ -125,7 +160,6 @@ export default function BlogForm({ blogId }) {
       }
     }
 
-    // Format 2: { violations: [{propertyPath, message}] } (Symfony)
     if (!Object.keys(errors).length && Array.isArray(p?.violations)) {
       for (const v of p.violations) {
         const field = FIELD_MAP[v.propertyPath] || v.propertyPath;
@@ -135,7 +169,6 @@ export default function BlogForm({ blogId }) {
       }
     }
 
-    // Format 3: err.validationErrors from buildValidationError
     if (!Object.keys(errors).length && err?.validationErrors) {
       for (const [key, msg] of Object.entries(err.validationErrors)) {
         const field = FIELD_MAP[key] || key;
@@ -195,13 +228,15 @@ export default function BlogForm({ blogId }) {
 
     setSaving(true);
 
+    const cleanedForm = { ...form, content: cleanQuillHtml(form.content) };
+
     try {
       if (isEdit) {
-        await adminUpdateBlog(blogId, form);
+        await adminUpdateBlog(blogId, cleanedForm);
         setSuccess("Blog je uspješno ažuriran.");
         setTimeout(() => alertRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
       } else {
-        const created = await adminCreateBlog(form);
+        const created = await adminCreateBlog(cleanedForm);
         setSuccess("Blog je uspješno kreiran.");
         router.push(`/admin/blogovi/${created.id}`);
         return;
@@ -222,6 +257,10 @@ export default function BlogForm({ blogId }) {
     ? normalizeInventoryImageUrl(existingImage)
     : null;
 
+  const contentForPreview = cleanQuillHtml(form.content);
+  const previewToc = parseTocFromHtml(contentForPreview);
+  const previewContent = injectHeadingIds(contentForPreview);
+
   return (
     <form className="blog-form" onSubmit={handleSubmit}>
       <div className="blog-form__grid">
@@ -230,7 +269,10 @@ export default function BlogForm({ blogId }) {
             <h4 className="detail-card__title">Sadržaj</h4>
             <div className="edit-fields">
               <div className="edit-row">
-                <label>Naslov</label>
+                <label>
+                  Naslov
+                  <FieldHint text="Glavni naslov bloga koji se prikazuje na stranici, u listi blogova i u Google pretrazi." />
+                </label>
                 <input
                   id="blog-title"
                   type="text"
@@ -241,7 +283,10 @@ export default function BlogForm({ blogId }) {
                 {renderFieldError("title")}
               </div>
               <div className="edit-row">
-                <label>Kratak opis</label>
+                <label>
+                  Kratak opis
+                  <FieldHint text="Jedna ili dvije rečenice koje opisuju blog. Prikazuje se na listi blogova ispod naslova." />
+                </label>
                 <textarea
                   id="blog-description"
                   rows={3}
@@ -251,19 +296,114 @@ export default function BlogForm({ blogId }) {
                 {renderFieldError("description")}
               </div>
               <div className="edit-row">
-                <label>Sadržaj</label>
+                <label>
+                  Sadržaj
+                  <FieldHint text="Glavni tekst bloga. Koristite H2 za glavne sekcije i H3 za podsekcije — automatski se generiše Table of Contents. Vizuelni editor je za pisanje, HTML tab za napredne izmjene, Preview za provjeru izgleda." />
+                </label>
                 <div id="blog-content" className="blog-editor-wrapper">
-                  <ReactQuill
-                    theme="snow"
-                    value={form.content}
-                    onChange={(value) => handleChange("content", value)}
-                    modules={QUILL_MODULES}
-                  />
+                  <div className="blog-editor-tabs">
+                    <button
+                      type="button"
+                      className={`blog-editor-tab${editorTab === "visual" ? " active" : ""}`}
+                      onClick={() => setEditorTab("visual")}
+                    >
+                      Vizuelni editor
+                    </button>
+                    <button
+                      type="button"
+                      className={`blog-editor-tab${editorTab === "html" ? " active" : ""}`}
+                      onClick={async () => {
+                        const cleaned = cleanQuillHtml(form.content);
+                        const formatted = await formatHtml(cleaned);
+                        handleChange("content", formatted);
+                        setEditorTab("html");
+                      }}
+                    >
+                      HTML kod
+                    </button>
+                    <button
+                      type="button"
+                      className={`blog-editor-tab${editorTab === "preview" ? " active" : ""}`}
+                      onClick={() => setEditorTab("preview")}
+                    >
+                      Preview
+                    </button>
+                  </div>
+
+                  {editorTab === "visual" && (
+                    <ReactQuill
+                      theme="snow"
+                      value={form.content}
+                      onChange={(value) => handleChange("content", value)}
+                      modules={QUILL_MODULES}
+                    />
+                  )}
+
+                  {editorTab === "html" && (
+                    <>
+                      <div className="blog-editor-html-actions">
+                        <button
+                          type="button"
+                          className="blog-editor-format-btn"
+                          onClick={async () => {
+                            const formatted = await formatHtml(cleanQuillHtml(form.content));
+                            handleChange("content", formatted);
+                          }}
+                        >
+                          Formatiraj HTML
+                        </button>
+                      </div>
+                      <textarea
+                        className="blog-editor-html"
+                        value={form.content}
+                        onChange={(e) => handleChange("content", e.target.value)}
+                        rows={20}
+                        spellCheck={false}
+                        placeholder="Unesite HTML kod ovdje..."
+                      />
+                    </>
+                  )}
+
+                  {editorTab === "preview" && (
+                    <div className="blog-editor-preview">
+                      <div className="blog-section-five">
+                        <div className="blog-content">
+                          {previewToc.length > 0 && (
+                            <div className="blog-toc">
+                              <h3>{TOC_LABEL[form.language] || "Table of Contents"}</h3>
+                              <ol className="blog-list">
+                                {previewToc.map((item) => (
+                                  <li key={item.id}>
+                                    <span>{item.label}</span>
+                                    {item.children.length > 0 && (
+                                      <ul className="blog-sublist">
+                                        {item.children.map((child) => (
+                                          <li key={child.id}><span>{child.label}</span></li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                          {form.content ? (
+                            <div dangerouslySetInnerHTML={{ __html: previewContent }} />
+                          ) : (
+                            <p className="blog-editor-preview__empty">Nema sadržaja za prikaz.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {renderFieldError("content")}
               </div>
               <div className="edit-row">
-                <label>Meta opis (SEO)</label>
+                <label>
+                  Meta opis (SEO)
+                  <FieldHint text="Opis koji Google prikazuje u rezultatima pretrage. Idealno između 120 i 160 karaktera. Ne prikazuje se na samoj stranici bloga." />
+                </label>
                 <textarea
                   id="blog-metaDescription"
                   rows={2}
@@ -281,7 +421,10 @@ export default function BlogForm({ blogId }) {
             <h4 className="detail-card__title">Postavke</h4>
             <div className="edit-fields">
               <div className="edit-row">
-                <label>Jezik</label>
+                <label>
+                  Jezik
+                  <FieldHint text="Jezik na kom je blog napisan. Određuje u kojoj jezičnoj verziji sajta će se blog prikazivati." />
+                </label>
                 <select
                   id="blog-language"
                   value={form.language}
@@ -302,12 +445,16 @@ export default function BlogForm({ blogId }) {
                   />
                   <span>Objavljeno</span>
                 </label>
+                <FieldHint text="Kada je uključeno, blog je vidljiv svim posjetiocima sajta. Isključeno znači da je blog sačuvan kao nacrt." />
               </div>
             </div>
           </div>
 
           <div className="detail-card">
-            <h4 className="detail-card__title">Naslovna slika</h4>
+            <h4 className="detail-card__title">
+              Naslovna slika
+              <FieldHint text="Slika koja se prikazuje na vrhu bloga i kao thumbnail u listi blogova. Preporučena veličina: 924×450px." />
+            </h4>
             {imagePreview && (
               <img src={imagePreview} alt="" className="blog-form__preview" />
             )}

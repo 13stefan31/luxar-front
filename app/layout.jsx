@@ -38,7 +38,7 @@ export const metadata = {
     siteName: "LUXAR TRADE",
     images: [
       {
-        url: "/images/car.webp",
+        url: "/images/logo.png",
         width: 1200,
         height: 630,
         alt: "LUXAR TRADE – rent a car",
@@ -49,7 +49,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "LUXAR TRADE – rent a car",
     description: "LUXAR TRADE – rent a car",
-    images: ["/images/car.webp"],
+    images: ["/images/logo.png"],
   },
   verification: {
     google: "ZbyhfvTEW1nf8uN-CgCZclAvDAFbpssiV7dMnt1Pe6s",
