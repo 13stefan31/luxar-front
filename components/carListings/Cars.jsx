@@ -349,7 +349,7 @@ export default function Cars() {
     totalItems: null,
   });
   const [expandedId, setExpandedId] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [columnsPerRow, setColumnsPerRow] = useState(3);
   const { t } = useLanguage();
