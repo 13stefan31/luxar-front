@@ -27,6 +27,7 @@ const remotePatterns = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  trailingSlash: true,
   images: {
     remotePatterns,
   },
