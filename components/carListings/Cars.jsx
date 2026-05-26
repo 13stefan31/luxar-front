@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TIME_OPTIONS from "@/lib/timeOptions";
 import Slider from "react-slick";
 import Image from "next/image";
@@ -339,21 +339,71 @@ const mapCars = (items, pageToLoad, perPage, t) => {
   });
 };
 
-export default function Cars() {
-  const [carItems, setCarItems] = useState([]);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({
-    totalPages: 1,
-    currentPage: 1,
-    perPage: 0,
-    totalItems: null,
-  });
-  const [expandedId, setExpandedId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [columnsPerRow, setColumnsPerRow] = useState(3);
+const EMPTY_META = {
+  totalPages: 1,
+  currentPage: 1,
+  perPage: 0,
+  totalItems: null,
+};
+
+const buildInitialCarsState = (initialPayload, t) => {
+  if (!initialPayload || !Array.isArray(initialPayload.data)) {
+    return {
+      hasPayload: false,
+      carItems: [],
+      meta: EMPTY_META,
+    };
+  }
+
+  const items = initialPayload.data;
+  const payloadMeta =
+    initialPayload.meta && typeof initialPayload.meta === "object"
+      ? initialPayload.meta
+      : {};
+  const parsedPerPage = Number(payloadMeta.perPage);
+  const perPage =
+    Number.isFinite(parsedPerPage) && parsedPerPage > 0
+      ? parsedPerPage
+      : items.length || 1;
+  const parsedTotalItems = Number(payloadMeta.totalItems);
+  const totalItems = Number.isFinite(parsedTotalItems)
+    ? parsedTotalItems
+    : items.length;
+  const parsedTotalPages = Number(payloadMeta.totalPages);
+  const totalPages =
+    Number.isFinite(parsedTotalPages) && parsedTotalPages > 0
+      ? parsedTotalPages
+      : totalItems && perPage
+        ? Math.ceil(totalItems / perPage)
+        : 1;
+  const mappedCars = mapCars(items, 1, perPage, t);
+
+  return {
+    hasPayload: true,
+    carItems: mappedCars,
+    meta: {
+      totalPages,
+      currentPage: 1,
+      perPage,
+      totalItems,
+    },
+  };
+};
+
+export default function Cars({ initialPayload = null }) {
   const { t } = useLanguage();
   const { filters, setFilters } = useCarFilters();
+  const initialCarsState = useMemo(
+    () => buildInitialCarsState(initialPayload, t),
+    [initialPayload, t]
+  );
+  const [carItems, setCarItems] = useState(initialCarsState.carItems);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState(initialCarsState.meta);
+  const [expandedId, setExpandedId] = useState(null);
+  const [isLoading, setIsLoading] = useState(!initialCarsState.hasPayload);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [columnsPerRow, setColumnsPerRow] = useState(3);
   const [draftFilters, setDraftFilters] = useState(filters);
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState(DEFAULT_TIME);
@@ -441,6 +491,8 @@ export default function Cars() {
     [t]
   );
   const filterKey = `${engineType}|${transmissionType}|${fuelType}|${manufactureYear}|${startingDate}|${endingDate}`;
+  const hasSkippedInitialFetchRef = useRef(initialCarsState.hasPayload);
+  const hasMountedFilterResetRef = useRef(false);
   useEffect(() => {
     setDraftFilters(filters);
     const nextPickup = splitDateTime(startingDate);
@@ -532,18 +584,21 @@ export default function Cars() {
   }, []);
 
   useEffect(() => {
+    if (!hasMountedFilterResetRef.current) {
+      hasMountedFilterResetRef.current = true;
+      return;
+    }
     setPage(1);
     setCarItems([]);
     setExpandedId(null);
-    setMeta({
-      totalPages: 1,
-      currentPage: 1,
-      perPage: 0,
-      totalItems: null,
-    });
+    setMeta(EMPTY_META);
   }, [filterKey]);
 
   useEffect(() => {
+    if (hasSkippedInitialFetchRef.current) {
+      hasSkippedInitialFetchRef.current = false;
+      return;
+    }
     let isCurrent = true;
 
     const fetchCars = async () => {

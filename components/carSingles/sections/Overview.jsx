@@ -83,10 +83,10 @@ const formatEquipmentValue = (value) => {
   if (value === undefined || value === null || value === "") {
     return "";
   }
-  if (value === true) {
+  if (value === true || value === "true") {
     return "Yes";
   }
-  if (value === false) {
+  if (value === false || value === "false") {
     return "No";
   }
   return humanizeText(value);
