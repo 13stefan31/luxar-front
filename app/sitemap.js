@@ -15,7 +15,6 @@ const staticPages = [
   { path: "/terms", priority: 0.4, changeFrequency: "yearly" },
   { path: "/blog-list-01", priority: 0.7, changeFrequency: "weekly" },
   { path: "/trip-planner", priority: 0.6, changeFrequency: "monthly" },
-  { path: "/dealer", priority: 0.6, changeFrequency: "monthly" },
   { path: "/montenegro-road-trip", priority: 0.8, changeFrequency: "monthly" },
 ];
 

@@ -8,11 +8,20 @@ import Image from "next/image";
 import { socialMediaLinks } from "@/data/footerLinks";
 import { useLanguage } from "@/context/LanguageContext";
 import { getInternalPathname } from "@/lib/i18nRoutes";
+import { fetchBlogs } from "@/lib/inventoryApi";
 
 export default function MobileMenu() {
   const pathname = usePathname();
   const [showMenu, setShowMenu] = useState(false);
-  const { t } = useLanguage();
+  const [menuBlogs, setMenuBlogs] = useState([]);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const { t, locale } = useLanguage();
+
+  useEffect(() => {
+    fetchBlogs(locale, { isMenu: true })
+      .then(setMenuBlogs)
+      .catch(() => setMenuBlogs([]));
+  }, [locale]);
 
   const getSocialLabel = (iconClass = "") => {
     const normalized = iconClass.toLowerCase();
@@ -94,21 +103,55 @@ export default function MobileMenu() {
 
               <div className="mobile-menu-panel">
                 <ul className="navigation mm-listview">
-                  {headerLinks.map((item, index) => (
-                    <li
-                      key={index}
-                      className={`mm-listitem ${isActive(item.href) ? "current" : ""
-                        }`}
-                    >
-                      <Link
-                        href={item.href}
-                        className="mm-listitem__text"
-                        onClick={closeMenu}
+                  {headerLinks.map((item, index) => {
+                    if (item.key === "services") {
+                      return (
+                        <li key={index} className="mm-listitem mm-listitem_vertical">
+                          <span className="mm-listitem__text">{t(item.title)}</span>
+                          <button
+                            type="button"
+                            className="mm-btn mm-btn_next mm-listitem__btn"
+                            onClick={(e) => { e.stopPropagation(); setServicesOpen((o) => !o); }}
+                            aria-expanded={servicesOpen}
+                            style={{ transform: servicesOpen ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
+                          />
+                          <div style={{ display: servicesOpen ? "block" : "none", width: "100%", paddingLeft: 20 }}>
+                            <ul className="mm-listview">
+                              {menuBlogs.map((blog) => (
+                                <li key={blog.id} className="mm-listitem">
+                                  <Link
+                                    href={
+                                      blog.alias
+                                        ? `/blog-single/${blog.id}/${blog.alias}?origin=services`
+                                        : `/blog-single/${blog.id}?origin=services`
+                                    }
+                                    className="mm-listitem__text"
+                                    onClick={closeMenu}
+                                  >
+                                    {blog.title}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li
+                        key={index}
+                        className={`mm-listitem ${isActive(item.href) ? "current" : ""}`}
                       >
-                        {t(item.title)}
-                      </Link>
-                    </li>
-                  ))}
+                        <Link
+                          href={item.href}
+                          className="mm-listitem__text"
+                          onClick={closeMenu}
+                        >
+                          {t(item.title)}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <ul className="mobile-menu-social" aria-label="Social links">

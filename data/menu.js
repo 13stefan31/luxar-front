@@ -10,7 +10,8 @@ export const headerLinks = [
   },
   {
     title: "Locations",
-    href: "/dealer",
+    href: "#",
+    key: "services",
   },
   {
     title: "Contact us",

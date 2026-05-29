@@ -2291,19 +2291,19 @@ Main Header
   top: 100%;
   left: 0;
   background-color: #fff;
-  padding: 2px 0 5px;
-  margin-top: 30px;
+  padding: 25px 20px;
+  margin-top: 5px;
   margin-bottom: 0;
   min-width: 243px;
-  z-index: 99;
+  z-index: 99999;
   visibility: hidden;
   opacity: 0;
-  -webkit-box-shadow: 0px 6px 15px 0px rgba(64, 79, 104, 0.05);
-  box-shadow: 0px 6px 15px 0px rgba(64, 79, 104, 0.05);
+  -webkit-box-shadow: 0px 8px 24px 0px rgba(64, 79, 104, 0.18);
+  box-shadow: 0px 8px 24px 0px rgba(64, 79, 104, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
-  -webkit-transition: all 0.3s ease;
-  transition: all 0.3s ease;
-  padding: 25px 20px;
+  -webkit-transition: opacity 0.3s ease, visibility 0.3s ease, margin-top 0.3s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease, margin-top 0.3s ease;
 }
 
 .header-style-v1 .header-inner .mega-menu {
@@ -2347,11 +2347,10 @@ Main Header
   li
   a {
   display: block;
-  color: #050b20;
+  color: #050b20 !important;
   font-size: 15px;
   -webkit-transition: all 220ms linear 0ms;
   transition: all 220ms linear 0ms;
-    
 }
 
 .header-style-v1
@@ -18265,7 +18264,7 @@ Section Title
 }
 
 .blog-section-five .blog-share--bottom {
-  margin: 32px 0 0;
+  margin: 32px 0 60px;
 }
 
 .blog-section-five .blog-share .share-label {

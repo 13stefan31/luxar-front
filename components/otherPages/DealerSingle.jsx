@@ -27,9 +27,6 @@ export default function DealerSingle({ dealerItem }) {
                 <Link href={`/`}>Home</Link>
               </li>
               <li>
-                <Link href={`/dealer`}>Dealers</Link>
-              </li>
-              <li>
                 <span>{dealerItem?.title || "Dealer"}</span>
               </li>
             </ul>

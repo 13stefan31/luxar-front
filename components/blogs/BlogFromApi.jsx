@@ -6,7 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchBlog, normalizeInventoryImageUrl } from "@/lib/inventoryApi";
 import { parseTocFromHtml, injectHeadingIds } from "@/lib/tocUtils";
 
-export default function BlogFromApi({ blogId }) {
+export default function BlogFromApi({ blogId, origin }) {
   const { t, locale } = useLanguage();
   const [blog, setBlog] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -210,7 +210,11 @@ export default function BlogFromApi({ blogId }) {
         <div className="boxcar-title wow fadeInUp">
           <ul className="breadcrumb">
             <li><Link href="/">{t("Home")}</Link></li>
-            <li><Link href="/blog-list-01">{t("Blog")}</Link></li>
+            {origin === "services" ? (
+              <li><span>{t("Locations")}</span></li>
+            ) : (
+              <li><Link href="/blog-list-01">{t("Blog")}</Link></li>
+            )}
             <li><span>{blog.title}</span></li>
           </ul>
           {publishedDate && (

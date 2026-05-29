@@ -54,12 +54,13 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function BlogSinglePage({ params }) {
+export default function BlogSinglePage({ params, searchParams }) {
+  const origin = searchParams?.origin;
   return (
     <>
       <Header1 headerClass="boxcar-header header-style-v1 style-two inner-header cus-style-1" />
-      <BlogFromApi blogId={params?.id} />
-      <Blogs />
+      <BlogFromApi blogId={params?.id} origin={origin} />
+      {origin !== "services" && <Blogs />}
       <Footer1 parentClass="boxcar-footer footer-style-one v1 cus-st-1" />
     </>
   );

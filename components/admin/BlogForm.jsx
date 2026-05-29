@@ -105,7 +105,9 @@ export default function BlogForm({ blogId }) {
     content: "",
     language: "me",
     isPublished: false,
+    isMenu: false,
     metaDescription: "",
+    alias: "",
     coverImage: null,
   });
 
@@ -120,7 +122,9 @@ export default function BlogForm({ blogId }) {
           content: cleanQuillHtml(data.content || ""),
           language: data.language || "me",
           isPublished: Boolean(data.isPublished),
+          isMenu: Boolean(data.isMenu),
           metaDescription: data.metaDescription || "",
+          alias: data.alias || "",
           coverImage: null,
         });
         setExistingImage(data.generatedCoverImage || "");
@@ -412,6 +416,20 @@ export default function BlogForm({ blogId }) {
                 />
                 {renderFieldError("metaDescription")}
               </div>
+              <div className="edit-row">
+                <label>
+                  Alias (URL slug)
+                  <FieldHint text="URL slug bloga — dio adrese koji se pojavljuje u linku. Npr. 'moj-blog-clanak'. Ostavite prazno za automatsko generisanje." />
+                </label>
+                <input
+                  id="blog-alias"
+                  type="text"
+                  value={form.alias}
+                  onChange={(e) => handleChange("alias", e.target.value)}
+                  placeholder="npr. moj-blog-clanak"
+                />
+                {renderFieldError("alias")}
+              </div>
             </div>
           </div>
         </div>
@@ -446,6 +464,17 @@ export default function BlogForm({ blogId }) {
                   <span>Objavljeno</span>
                 </label>
                 <FieldHint text="Kada je uključeno, blog je vidljiv svim posjetiocima sajta. Isključeno znači da je blog sačuvan kao nacrt." />
+              </div>
+              <div className="edit-row">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={form.isMenu}
+                    onChange={(e) => handleChange("isMenu", e.target.checked)}
+                  />
+                  <span>Prikaži u meniju</span>
+                </label>
+                <FieldHint text="Kada je uključeno, blog se prikazuje u navigacionom meniju sajta." />
               </div>
             </div>
           </div>
