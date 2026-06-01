@@ -8,6 +8,7 @@ import {
 } from "@/lib/inventoryApi";
 import { getPreferredLocale } from "@/lib/metadataHelper";
 import { localizePath } from "@/lib/i18nRoutes";
+import { notFound } from "next/navigation";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
 
@@ -169,16 +170,17 @@ const buildParamCandidates = (rawId) => {
 
 const loadCar = async ({ params, searchParams }) => {
   const listData = await fetchCarList();
-  const fallbackCar = listData[0] || {};
   const candidates = buildParamCandidates(params.id);
-  const listCar =
-    listData.find((item) =>
-      candidates.some(
-        (candidate) =>
-          String(item.id) === candidate ||
-          (typeof item.alias === "string" && item.alias === candidate)
-      )
-    ) || fallbackCar;
+  const listCar = listData.find((item) =>
+    candidates.some(
+      (candidate) =>
+        String(item.id) === candidate ||
+        (typeof item.alias === "string" && item.alias === candidate)
+    )
+  );
+  if (!listCar) {
+    notFound();
+  }
   const alias =
     listCar?.alias ?? (listCar?.id ? String(listCar.id) : params.id ?? "");
   const instanceParam =
@@ -248,6 +250,7 @@ export async function generateMetadata({ params, searchParams }) {
       images: [{ url: ogImage, width: 1200, height: 630, alt: label }],
     },
     alternates: {
+      canonical: `${SITE_URL}${localizePath(carPath, locale)}`,
       languages: Object.fromEntries(
         Object.entries(HREFLANG).map(([loc, hreflang]) => [
           hreflang,

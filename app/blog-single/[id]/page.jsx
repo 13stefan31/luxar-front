@@ -36,7 +36,7 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
-    ...(internalPath && { alternates: { languages } }),
+    ...(internalPath && { alternates: { canonical: `${SITE_URL}${localizePath(internalPath, locale)}`, languages } }),
     openGraph: {
       type: "article",
       url: pageUrl,

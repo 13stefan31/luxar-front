@@ -16,6 +16,7 @@ export default function robots() {
           "/login",
           "/invoice",
           "/ui-elements",
+          "/dealer-single",
         ],
       },
     ],

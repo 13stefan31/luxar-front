@@ -3,7 +3,6 @@ import Footer1 from "@/components/footers/Footer1";
 import Header1 from "@/components/headers/Header1";
 import { getPreferredLocale } from "@/lib/metadataHelper";
 import { fetchBlog } from "@/lib/inventoryApi";
-import { headers } from "next/headers";
 import { localizePath, supportedLocales, defaultLocale } from "@/lib/i18nRoutes";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
@@ -13,7 +12,6 @@ import Blogs from "@/components/homes/home-1/Blogs";
 
 export async function generateMetadata({ params }) {
   const locale = getPreferredLocale();
-  const internalPath = headers().get("x-pathname");
   let title = "Blog | LUXAR TRADE";
   let description = "";
   try {
@@ -23,13 +21,12 @@ export async function generateMetadata({ params }) {
   } catch {
     // fallback to defaults
   }
-  const languages = internalPath
-    ? Object.fromEntries([
-        ...supportedLocales.map((l) => [HREFLANG[l] || l, `${SITE_URL}${localizePath(internalPath, l)}`]),
-        ["x-default", `${SITE_URL}${localizePath(internalPath, defaultLocale)}`],
-      ])
-    : {};
-  return { title, description, ...(internalPath && { alternates: { languages } }) };
+  const blogBasePath = `/blog-single/${params.id}`;
+  const languages = Object.fromEntries([
+    ...supportedLocales.map((l) => [HREFLANG[l] || l, `${SITE_URL}${localizePath(blogBasePath, l)}`]),
+    ["x-default", `${SITE_URL}${localizePath(blogBasePath, defaultLocale)}`],
+  ]);
+  return { title, description, alternates: { canonical: `${SITE_URL}${localizePath(blogBasePath, locale)}`, languages } };
 }
 
 export default function BlogSingleSlugPage({ params, searchParams }) {
