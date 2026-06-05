@@ -88,6 +88,9 @@ export default async function BlogFromApi({ blogId, origin }) {
                 </div>
                 <div className="blog-content">
                   <BlogShareButtons blogTitle={blog.title} />
+                  {blog.content && (
+                    <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+                  )}
                   <BlogShareButtons blogTitle={blog.title} extraClass="blog-share--bottom" />
                 </div>
               </div>

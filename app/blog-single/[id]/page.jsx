@@ -17,8 +17,9 @@ export async function generateMetadata({ params }) {
   let title = "Blog | LUXAR TRADE";
   let description = "";
   let ogImage = "/images/logo.png";
+  let blog = null;
   try {
-    const blog = await fetchBlog(params?.id, locale);
+    blog = await fetchBlog(params?.id, locale);
     if (blog?.title) title = `${blog.title} | LUXAR TRADE`;
     if (blog?.description) description = String(blog.description).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
     const rawImage = blog?.coverImagePath || blog?.generatedCoverImage;
@@ -26,17 +27,18 @@ export async function generateMetadata({ params }) {
   } catch {
     // fallback to defaults
   }
-  const pageUrl = internalPath ? `${SITE_URL}${internalPath}` : SITE_URL;
-  const languages = internalPath
-    ? Object.fromEntries([
-        ...supportedLocales.map((l) => [HREFLANG[l] || l, `${SITE_URL}${localizePath(internalPath, l)}`]),
-        ["x-default", `${SITE_URL}${localizePath(internalPath, defaultLocale)}`],
-      ])
-    : {};
+  const blogBasePath = blog?.alias
+    ? `/blog-single/${params?.id}/${blog.alias}`
+    : internalPath || `/blog-single/${params?.id}`;
+  const pageUrl = `${SITE_URL}${blogBasePath}`;
+  const languages = Object.fromEntries([
+    ...supportedLocales.map((l) => [HREFLANG[l] || l, `${SITE_URL}${localizePath(blogBasePath, l)}`]),
+    ["x-default", `${SITE_URL}${localizePath(blogBasePath, defaultLocale)}`],
+  ]);
   return {
     title,
     description,
-    ...(internalPath && { alternates: { canonical: `${SITE_URL}${localizePath(internalPath, locale)}`, languages } }),
+    alternates: { canonical: `${SITE_URL}${localizePath(blogBasePath, locale)}`, languages },
     openGraph: {
       type: "article",
       url: pageUrl,

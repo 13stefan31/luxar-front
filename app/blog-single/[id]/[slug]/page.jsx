@@ -14,14 +14,17 @@ export async function generateMetadata({ params }) {
   const locale = getPreferredLocale();
   let title = "Blog | LUXAR TRADE";
   let description = "";
+  let blog = null;
   try {
-    const blog = await fetchBlog(params?.id, locale);
+    blog = await fetchBlog(params?.id, locale);
     if (blog?.title) title = `${blog.title} | LUXAR TRADE`;
     if (blog?.description) description = String(blog.description).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
   } catch {
     // fallback to defaults
   }
-  const blogBasePath = `/blog-single/${params.id}`;
+  const blogBasePath = blog?.alias
+    ? `/blog-single/${params.id}/${blog.alias}`
+    : `/blog-single/${params.id}`;
   const languages = Object.fromEntries([
     ...supportedLocales.map((l) => [HREFLANG[l] || l, `${SITE_URL}${localizePath(blogBasePath, l)}`]),
     ["x-default", `${SITE_URL}${localizePath(blogBasePath, defaultLocale)}`],

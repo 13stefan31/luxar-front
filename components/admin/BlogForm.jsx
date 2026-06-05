@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-// import nextDynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import {
   adminGetBlog,
   adminCreateBlog,
@@ -9,13 +9,12 @@ import {
   adminLogout,
 } from "@/lib/adminApi";
 import { normalizeInventoryImageUrl } from "@/lib/inventoryApi";
-// import { parseTocFromHtml, injectHeadingIds } from "@/lib/tocUtils";
 
-// const ReactQuill = nextDynamic(() => import("react-quill-new"), {
-//   ssr: false,
-//   loading: () => <p className="text">Učitavanje editora...</p>,
-// });
-// import "react-quill-new/dist/quill.snow.css";
+const ReactQuill = nextDynamic(() => import("react-quill-new"), {
+  ssr: false,
+  loading: () => <p className="text">Učitavanje editora...</p>,
+});
+import "react-quill-new/dist/quill.snow.css";
 
 const VALIDATION_MESSAGES = {
   "blog.title.required": "Naslov je obavezan.",
@@ -43,21 +42,19 @@ const FIELD_MAP = {
   isPublished: "isPublished",
 };
 
-// const QUILL_MODULES = {
-//   toolbar: [
-//     [{ header: [1, 2, 3, false] }],
-//     ["bold", "italic", "underline", "strike"],
-//     [{ align: [] }],
-//     [{ list: "ordered" }, { list: "bullet" }],
-//     ["blockquote", "link", "image"],
-//     ["clean"],
-//   ],
-//   clipboard: {
-//     matchVisual: false,
-//   },
-// };
-
-// const TOC_LABEL = { me: "Sadržaj", en: "Table of Contents", ru: "Содержание" };
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ align: [] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["blockquote", "link", "image"],
+    ["clean"],
+  ],
+  clipboard: {
+    matchVisual: false,
+  },
+};
 
 function FieldHint({ text }) {
   return (
@@ -68,23 +65,25 @@ function FieldHint({ text }) {
   );
 }
 
-// function cleanQuillHtml(html) {
-//   if (!html) return html;
-//   return html.replace(/&nbsp;/g, " ").replace(/  +/g, " ");
-// }
+function cleanQuillHtml(html) {
+  if (!html) return html;
+  return html.replace(/&nbsp;/g, " ").replace(/  +/g, " ");
+}
 
-// async function formatHtml(html) {
-//   if (!html) return html;
-//   const mod = await import("js-beautify");
-//   const beautify = mod.html ?? mod.default?.html;
-//   return beautify(html, {
-//     indent_size: 2,
-//     wrap_line_length: 0,
-//     preserve_newlines: false,
-//     end_with_newline: false,
-//     extra_liners: [],
-//   });
-// }
+async function formatHtml(html) {
+  if (!html) return html;
+  const mod = await import("js-beautify");
+  const beautify = mod.html ?? mod.default?.html;
+  return beautify(html, {
+    indent_size: 2,
+    wrap_line_length: 0,
+    preserve_newlines: false,
+    end_with_newline: false,
+    extra_liners: [],
+  });
+}
+
+const stripHtml = (html) => html?.replace(/<[^>]*>/g, "").trim() || "";
 
 export default function BlogForm({ blogId }) {
   const router = useRouter();
@@ -97,11 +96,11 @@ export default function BlogForm({ blogId }) {
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [existingImage, setExistingImage] = useState("");
-  // const [editorTab, setEditorTab] = useState("visual");
+  const [editorTab, setEditorTab] = useState("visual");
   const [form, setForm] = useState({
     title: "",
     description: "",
-    // content: "",
+    content: "",
     language: "me",
     isPublished: false,
     isMenu: false,
@@ -118,7 +117,7 @@ export default function BlogForm({ blogId }) {
         setForm({
           title: data.title || "",
           description: data.description || "",
-          // content: cleanQuillHtml(data.content || ""),
+          content: cleanQuillHtml(data.content || ""),
           language: data.language || "me",
           isPublished: Boolean(data.isPublished),
           isMenu: Boolean(data.isMenu),
@@ -198,8 +197,6 @@ export default function BlogForm({ blogId }) {
   const renderFieldError = (field) =>
     fieldErrors[field] ? <span className="field-error-inline">{fieldErrors[field]}</span> : null;
 
-  // const stripHtml = (html) => html?.replace(/<[^>]*>/g, "").trim() || "";
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -209,7 +206,7 @@ export default function BlogForm({ blogId }) {
     const localErrors = {};
     if (!form.title.trim()) localErrors.title = VALIDATION_MESSAGES["blog.title.required"];
     if (!form.description.trim()) localErrors.description = VALIDATION_MESSAGES["blog.description.required"];
-    // if (!stripHtml(form.content)) localErrors.content = VALIDATION_MESSAGES["blog.content.required"];
+    if (!stripHtml(form.content)) localErrors.content = VALIDATION_MESSAGES["blog.content.required"];
     if (!form.metaDescription.trim()) localErrors.metaDescription = VALIDATION_MESSAGES["blog.meta_description.required"];
     if (!isEdit && !form.coverImage && !existingImage) localErrors.coverImage = VALIDATION_MESSAGES["blog.cover_image.required"];
 
@@ -231,15 +228,15 @@ export default function BlogForm({ blogId }) {
 
     setSaving(true);
 
-    // const cleanedForm = { ...form, content: cleanQuillHtml(form.content) };
+    const cleanedForm = { ...form, content: cleanQuillHtml(form.content) };
 
     try {
       if (isEdit) {
-        await adminUpdateBlog(blogId, form);
+        await adminUpdateBlog(blogId, cleanedForm);
         setSuccess("Blog je uspješno ažuriran.");
         setTimeout(() => alertRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
       } else {
-        const created = await adminCreateBlog(form);
+        const created = await adminCreateBlog(cleanedForm);
         setSuccess("Blog je uspješno kreiran.");
         router.push(`/admin/blogovi/${created.id}`);
         return;
@@ -260,9 +257,7 @@ export default function BlogForm({ blogId }) {
     ? normalizeInventoryImageUrl(existingImage)
     : null;
 
-  // const contentForPreview = cleanQuillHtml(form.content);
-  // const previewToc = parseTocFromHtml(contentForPreview);
-  // const previewContent = injectHeadingIds(contentForPreview);
+  const previewContent = cleanQuillHtml(form.content);
 
   return (
     <form className="blog-form" onSubmit={handleSubmit}>
@@ -298,10 +293,10 @@ export default function BlogForm({ blogId }) {
                 />
                 {renderFieldError("description")}
               </div>
-              {/* <div className="edit-row">
+              <div className="edit-row">
                 <label>
                   Sadržaj
-                  <FieldHint text="Glavni tekst bloga. Koristite H2 za glavne sekcije i H3 za podsekcije — automatski se generiše Table of Contents. Vizuelni editor je za pisanje, HTML tab za napredne izmjene, Preview za provjeru izgleda." />
+                  <FieldHint text="Glavni tekst bloga. Koristite H2 za glavne sekcije i H3 za podsekcije. Vizuelni editor je za pisanje, HTML tab za napredne izmjene, Preview za provjeru izgleda." />
                 </label>
                 <div id="blog-content" className="blog-editor-wrapper">
                   <div className="blog-editor-tabs">
@@ -371,26 +366,7 @@ export default function BlogForm({ blogId }) {
                     <div className="blog-editor-preview">
                       <div className="blog-section-five">
                         <div className="blog-content">
-                          {previewToc.length > 0 && (
-                            <div className="blog-toc">
-                              <h3>{TOC_LABEL[form.language] || "Table of Contents"}</h3>
-                              <ol className="blog-list">
-                                {previewToc.map((item) => (
-                                  <li key={item.id}>
-                                    <span>{item.label}</span>
-                                    {item.children.length > 0 && (
-                                      <ul className="blog-sublist">
-                                        {item.children.map((child) => (
-                                          <li key={child.id}><span>{child.label}</span></li>
-                                        ))}
-                                      </ul>
-                                    )}
-                                  </li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-                          {form.content ? (
+                          {previewContent ? (
                             <div dangerouslySetInnerHTML={{ __html: previewContent }} />
                           ) : (
                             <p className="blog-editor-preview__empty">Nema sadržaja za prikaz.</p>
@@ -401,7 +377,7 @@ export default function BlogForm({ blogId }) {
                   )}
                 </div>
                 {renderFieldError("content")}
-              </div> */}
+              </div>
               <div className="edit-row">
                 <label>
                   Meta opis (SEO)
