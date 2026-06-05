@@ -22,6 +22,14 @@ const remotePatterns = [
     protocol: "https",
     hostname: "images.pexels.com",
   },
+  {
+    protocol: "https",
+    hostname: "api.luxar-car-rental-montenegro.me",
+  },
+  {
+    protocol: "https",
+    hostname: "dev.api.luxar-car-rental-montenegro.me",
+  },
   ...(inventoryRemotePattern ? [inventoryRemotePattern] : []),
 ];
 
