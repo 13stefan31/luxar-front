@@ -1,6 +1,7 @@
 import ClientProviders from "./ClientProviders";
 import { DM_Sans } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 
 const LANG_CODES = { en: "en", me: "sr-ME", ru: "ru" };
 
@@ -69,6 +70,18 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-861YQ9ED3T"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-861YQ9ED3T');
+          `}
+        </Script>
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
