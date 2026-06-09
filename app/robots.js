@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxar-car-rental-montenegro.me";
 
 export default function robots() {
   return {
@@ -12,7 +12,7 @@ export default function robots() {
           "/cart",
           "/checkout",
           "/compare",
-"/login",
+          "/login",
           "/invoice",
           "/ui-elements",
           "/dealer-single",

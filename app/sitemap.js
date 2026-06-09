@@ -1,7 +1,7 @@
 import { localizePath } from "@/lib/i18nRoutes";
 import { INVENTORY_API_ROOT, getInventoryApiHeaders } from "@/lib/inventoryApi";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxar-car-rental-montenegro.me";
 const LOCALES = ["me", "en", "ru"];
 
 const url = (path) => `${SITE_URL}${path}`;

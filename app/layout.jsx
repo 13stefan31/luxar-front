@@ -12,7 +12,7 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxartrade.me";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxar-car-rental-montenegro.me";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
