@@ -122,8 +122,8 @@ export default function MobileMenu() {
                                   <Link
                                     href={
                                       blog.alias
-                                        ? `/blog-single/${blog.id}/${blog.alias}?origin=services`
-                                        : `/blog-single/${blog.id}?origin=services`
+                                        ? `/services/${blog.id}/${blog.alias}`
+                                        : `/services/${blog.id}`
                                     }
                                     className="mm-listitem__text"
                                     onClick={closeMenu}

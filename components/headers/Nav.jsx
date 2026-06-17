@@ -73,8 +73,8 @@ export default function Nav() {
               <Link
                 href={
                   blog.alias
-                    ? `/blog-single/${blog.id}/${blog.alias}?origin=services`
-                    : `/blog-single/${blog.id}?origin=services`
+                    ? `/services/${blog.id}/${blog.alias}`
+                    : `/services/${blog.id}`
                 }
                 style={{ color: "#050b20", display: "block", fontSize: 15 }}
               >
